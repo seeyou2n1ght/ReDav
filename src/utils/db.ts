@@ -12,8 +12,8 @@ import type { AppConfig } from '../types';
 export interface StoredConfig {
   /** 固定 ID，始终为 'current' */
   id: string;
-  /** WebDAV 配置 */
-  webdav: AppConfig['webdav'];
+  /** 阅读器配置（按类型） */
+  readers: AppConfig['readers'];
   /** Proxy 配置 */
   proxy: AppConfig['proxy'];
   /** 更新时间 */

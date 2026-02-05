@@ -18,7 +18,7 @@ const CONFIG_ID = 'current';
 export async function saveConfig(config: AppConfig): Promise<void> {
     const storedConfig: StoredConfig = {
         id: CONFIG_ID,
-        webdav: config.webdav,
+        readers: config.readers,
         proxy: config.proxy,
         updatedAt: new Date(),
     };
@@ -44,7 +44,7 @@ export async function loadConfig(): Promise<AppConfig | null> {
         }
 
         return {
-            webdav: storedConfig.webdav,
+            readers: storedConfig.readers,
             proxy: storedConfig.proxy,
         };
     } catch (error) {

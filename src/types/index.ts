@@ -3,12 +3,56 @@
  */
 
 /**
+ * 支持的阅读器类型
+ */
+export type ReaderType = 'anxReader' | 'moonReader' | 'koReader';
+
+/**
+ * 阅读器元信息
+ */
+export interface ReaderMeta {
+  name: string;
+  icon: string;
+  defaultPath: string;
+}
+
+/**
+ * 阅读器默认配置
+ */
+export const READER_DEFAULTS: Record<ReaderType, ReaderMeta> = {
+  anxReader: {
+    name: 'AnxReader',
+    icon: '📚',
+    defaultPath: '/AnxReader',
+  },
+  moonReader: {
+    name: 'MoonReader (静读天下)',
+    icon: '🌙',
+    defaultPath: '/Books',
+  },
+  koReader: {
+    name: 'KOReader',
+    icon: '📖',
+    defaultPath: '/koreader',
+  },
+};
+
+/**
  * WebDAV 配置
  */
 export interface WebDAVConfig {
   url: string;
   username: string;
   password: string;
+}
+
+/**
+ * 单个阅读器配置
+ */
+export interface ReaderConfig {
+  enabled: boolean;
+  webdav: WebDAVConfig;
+  syncPath: string;
 }
 
 /**
@@ -20,10 +64,10 @@ export interface ProxyConfig {
 }
 
 /**
- * 应用配置
+ * 应用配置（重构后）
  */
 export interface AppConfig {
-  webdav: WebDAVConfig;
+  readers: Partial<Record<ReaderType, ReaderConfig>>;
   proxy: ProxyConfig;
 }
 
@@ -38,3 +82,4 @@ export interface WebDAVItem {
   type: 'file' | 'directory';
   etag?: string;
 }
+
