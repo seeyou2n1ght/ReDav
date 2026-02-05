@@ -1,5 +1,7 @@
 # ReDav
 
+[![Deploy to Cloudflare Pages](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/YOUR_USERNAME/redav)
+
 > Re-read your journey. Your private Readwise on WebDAV.
 
 ReDav 是一个纯前端、无状态、可一键部署的轻量级阅读笔记聚合工具。让你的阅读笔记不再沉睡在 WebDAV 网盘中。
