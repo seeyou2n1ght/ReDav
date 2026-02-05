@@ -37,6 +37,21 @@ npm run dev
 npm run build
 ```
 
+## 开发进度
+
+### 已完成
+
+- ✅ **useWebDav Hook** - 支持 WebDAV 的 ls（列出目录）和 cat（读取文件）操作
+  - 集成 TanStack Query，提供自动缓存和状态管理
+  - 支持通过 Proxy 透传请求，避免 CORS 问题
+  - 完整的 TypeScript 类型定义
+
+### 进行中
+
+- 🚧 WebDAV Proxy 实现（Cloudflare Pages Function）
+- 🚧 阅读器适配器（AnxReader、MoonReader）
+- 🚧 UI 组件开发
+
 ## 项目结构
 
 ```
@@ -53,12 +68,59 @@ redav/
 └── package.json
 ```
 
-## 配置说明
+## 使用 useWebDav Hook
+
+### 基本用法
+
+```typescript
+import { useWebDav } from './hooks/useWebDav'
+import type { AppConfig } from './types'
+
+function MyComponent() {
+  const config: AppConfig = {
+    webdav: {
+      url: 'https://dav.example.com',
+      username: 'user',
+      password: 'pass'
+    },
+    proxy: {
+      url: 'https://proxy.example.com'
+    }
+  }
+
+  // 列出目录内容
+  const { ls } = useWebDav('/Books', config)
+  const { data: items, isLoading, error } = ls()
+
+  // 读取文件内容
+  const { cat } = useWebDav('/Books/note.json', config)
+  const { data: content, isLoading, error } = cat()
+
+  // ...
+}
+```
+
+### 配置说明
 
 在使用 ReDav 前，你需要配置以下信息：
 
 1. **数据源 (Source)** - WebDAV 地址、账号、密码
 2. **连接管道 (Pipeline)** - Proxy URL（可选，默认为官方代理）
+
+配置示例：
+
+```typescript
+const config: AppConfig = {
+  webdav: {
+    url: 'https://dav.example.com',
+    username: 'your-username',
+    password: 'your-password'
+  },
+  proxy: {
+    url: 'https://your-proxy.com'  // 可选，默认为官方代理
+  }
+}
+```
 
 ## 技术栈
 

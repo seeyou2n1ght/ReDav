@@ -47,11 +47,11 @@ SaaS 模式	官方托管 (redav.app)	官方公共 Proxy	小白用户，开箱即
 
     基础设施
 
-        [ ] 初始化项目代码结构（Vite + React + TypeScript）。
+        [x] 初始化项目代码结构（Vite + React + TypeScript）。
 
         [ ] 实现 Proxy：处理 CORS，透传 Basic Auth，支持 X-Proxy-Auth 保护。
 
-        [ ] 封装 useWebDav Hook：实现 XML 解析，支持 ls/cat 操作。
+        [x] 封装 useWebDav Hook：实现 XML 解析，支持 ls/cat 操作。
 
     核心业务
 
