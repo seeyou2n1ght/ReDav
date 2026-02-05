@@ -47,7 +47,7 @@ SaaS 模式	官方托管 (redav.app)	官方公共 Proxy	小白用户，开箱即
 
     基础设施
 
-        [ ] 初始化 GitHub 仓库 redav。
+        [ ] 初始化项目代码结构（Vite + React + TypeScript）。
 
         [ ] 实现 Proxy：处理 CORS，透传 Basic Auth，支持 X-Proxy-Auth 保护。
 
@@ -57,7 +57,7 @@ SaaS 模式	官方托管 (redav.app)	官方公共 Proxy	小白用户，开箱即
 
         [ ] AnxReader 适配器：解析 JSON 提取高亮与笔记。
 
-        [ ] 静读天下适配器：解析 .po 文件提取阅读进度。
+        [ ] MoonReader(静读天下)适配器：解析 .po 文件提取阅读进度。
 
         [ ] UI 构建：实现“网格书架”与“笔记流”视图 (shadcn/ui)。
 
@@ -89,11 +89,13 @@ SaaS 模式	官方托管 (redav.app)	官方公共 Proxy	小白用户，开箱即
 
 4. 技术栈 (Tech Stack)
 
-    Frontend: React 18, Vite, TypeScript.
+    开发环境: Node.js 18+, pnpm (推荐) 或 npm
 
-    UI: Tailwind CSS, shadcn/ui, Lucide Icons.
+    Frontend: React 18, Vite 5, TypeScript 5.
 
-    State: React Context + useReducer (配置), TanStack Query (网络), Dexie.js (本地缓存).
+    UI: Tailwind CSS 3, shadcn/ui, Lucide Icons.
+
+    State: React Context + useReducer (配置), TanStack Query 5 (网络), Dexie.js (本地缓存).
 
     HTTP Client: axios.
 
@@ -101,9 +103,9 @@ SaaS 模式	官方托管 (redav.app)	官方公共 Proxy	小白用户，开箱即
 
     Build: Cloudflare Pages (Frontend & Functions).
 
-    Test: Vitest, React Testing Library.
+    Test: Vitest 1, React Testing Library 14.
 
-    Lint: ESLint, Prettier, Husky.
+    Lint: ESLint 8, Prettier 3, Husky 8.
 
 4.1 项目结构 (Project Structure)
 
@@ -117,7 +119,7 @@ SaaS 模式	官方托管 (redav.app)	官方公共 Proxy	小白用户，开箱即
     │   │   ├── index.ts          # 统一导出 + 自动分发
     │   │   ├── types.ts          # 适配器接口定义
     │   │   ├── anx-reader.ts     # AnxReader 适配器
-    │   │   └── moon-reader.ts    # 静读天下适配器
+    │   │   └── moon-reader.ts    # MoonReader(静读天下)适配器
     │   ├── utils/                 # 工具函数
     │   └── types/                 # 类型定义
     │
@@ -185,4 +187,16 @@ Behavior:
 
 Response:
 
-    直接返回目标文件的 Body (XML/JSON/Text)。
+    成功：直接返回目标文件的 Body (XML/JSON/Text)，状态码 200。
+
+    错误响应格式：
+    {
+      "error": "错误类型",
+      "message": "详细错误信息"
+    }
+
+    常见错误状态码：
+    - 400: 请求参数错误（缺少 target 参数）
+    - 401: 认证失败（Proxy Token 错误或 WebDAV 认证失败）
+    - 403: 禁止访问（X-Proxy-Auth 验证失败）
+    - 502: 上游服务器错误（WebDAV 服务器无响应）
