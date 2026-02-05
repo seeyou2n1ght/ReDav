@@ -105,6 +105,57 @@ SaaS 模式	官方托管 (redav.app)	官方公共 Proxy	小白用户，开箱即
 
     Lint: ESLint, Prettier, Husky.
 
+4.1 项目结构 (Project Structure)
+
+    采用简单结构，前后端同仓库，利用 Cloudflare Pages Functions 原生集成：
+
+    redav/
+    ├── src/                        # 前端代码
+    │   ├── components/            # UI 组件
+    │   ├── hooks/                 # 自定义 Hooks (useWebDav)
+    │   ├── adapters/              # 阅读器适配器
+    │   │   ├── index.ts          # 统一导出 + 自动分发
+    │   │   ├── types.ts          # 适配器接口定义
+    │   │   ├── anx-reader.ts     # AnxReader 适配器
+    │   │   └── moon-reader.ts    # 静读天下适配器
+    │   ├── utils/                 # 工具函数
+    │   └── types/                 # 类型定义
+    │
+    ├── functions/                  # Cloudflare Pages Functions
+    │   └── proxy.ts               # WebDAV 代理
+    │
+    ├── public/                    # 静态资源
+    ├── package.json
+    ├── vite.config.ts
+    ├── tsconfig.json
+    ├── tailwind.config.js
+    └── wrangler.toml              # Cloudflare 配置
+
+4.2 适配器设计 (Adapter Pattern)
+
+    采用适配器模式统一处理不同阅读器的笔记格式：
+
+    统一接口定义：
+    interface ReaderAdapter {
+      name: string;                // 阅读器名称
+      filePattern: RegExp;         // 文件匹配规则
+      parse(content: string): UnifiedNote[];
+    }
+
+    统一笔记格式：
+    interface UnifiedNote {
+      id: string;                  // 唯一标识
+      bookTitle: string;           // 书名
+      chapter?: string;            // 章节
+      highlight: string;           // 高亮内容
+      note?: string;               // 用户笔记
+      page?: number;               // 页码/位置
+      createdAt: Date;             // 创建时间
+      sourceApp: string;           // 来源应用
+    }
+
+    扩展方式：新增阅读器支持只需创建适配器文件并注册到 adapters/index.ts，零侵入现有代码。
+
 5. 自定义代理接口规范 (Proxy API Spec)
 
 若用户选择自建后端（如使用 Python/Go/Node 部署在自己的 VPS 上），需遵循此接口规范以便前端连接。
