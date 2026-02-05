@@ -63,7 +63,7 @@ redav/
 ## 技术栈
 
 - **前端**: React 18 + Vite 5 + TypeScript 5
-- **UI**: Tailwind CSS 3 + shadcn/ui
+- **UI**: Tailwind CSS 4 + shadcn/ui
 - **状态**: React Context + TanStack Query 5 + Dexie.js
 - **后端**: Cloudflare Workers
 - **部署**: Cloudflare Pages

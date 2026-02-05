@@ -93,7 +93,7 @@ SaaS 模式	官方托管 (redav.app)	官方公共 Proxy	小白用户，开箱即
 
     Frontend: React 18, Vite 5, TypeScript 5.
 
-    UI: Tailwind CSS 3, shadcn/ui, Lucide Icons.
+    UI: Tailwind CSS 4, shadcn/ui, Lucide Icons.
 
     State: React Context + useReducer (配置), TanStack Query 5 (网络), Dexie.js (本地缓存).
 

@@ -9,6 +9,19 @@ export interface Env {
 
 export const onRequest: PagesFunction<Env> = async (context) => {
   const { request, env } = context;
+
+  // 处理 OPTIONS 预检请求
+  if (request.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Authorization, X-Proxy-Auth',
+        'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+      },
+    });
+  }
+
   const url = new URL(request.url);
   const target = url.searchParams.get('target');
 
