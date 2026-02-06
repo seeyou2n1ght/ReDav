@@ -7,6 +7,39 @@ import pako from 'pako';
 import type { UnifiedNote } from './types';
 
 /**
+ * MoonReader 书籍元数据（来自 books.sync）
+ */
+export interface MoonBookMetadata {
+  addTime: string;
+  author: string;
+  bookName: string;
+  category: string;
+  description: string;
+  downloadUrl: string;
+  filename: string;
+  favorite: string;
+  groupName: string;
+  rate: string;
+}
+
+/**
+ * 解析 books.sync 文件
+ * @param buffer - books.sync 文件的 ArrayBuffer
+ * @returns filename -> metadata 的映射
+ */
+export function parseBooksSync(buffer: ArrayBuffer): Map<string, MoonBookMetadata> {
+  const uint8 = new Uint8Array(buffer);
+  const text = pako.inflate(uint8, { to: 'string' });
+  const books: MoonBookMetadata[] = JSON.parse(text);
+
+  const map = new Map<string, MoonBookMetadata>();
+  books.forEach(book => {
+    map.set(book.filename, book);
+  });
+  return map;
+}
+
+/**
  * 解压 .an 文件内容
  * 尝试多种解压方式：inflateRaw -> inflate -> ungzip -> utf-8 text
  */
@@ -121,19 +154,34 @@ export function parseMoonReaderContent(text: string): UnifiedNote[] {
 
 /**
  * 解析 .an 文件 buffer
+ * @param buffer - .an 文件的 ArrayBuffer
+ * @param filename - 文件名（用于提取默认书名）
+ * @param metadata - 可选的书籍元数据（来自 books.sync）
  */
 export async function parseMoonReaderFile(
   buffer: ArrayBuffer,
-  filename: string
+  filename: string,
+  metadata?: MoonBookMetadata
 ): Promise<UnifiedNote[]> {
   const text = decodeAnFile(buffer);
   const notes = parseMoonReaderContent(text);
 
-  // 使用文件名修正书名 (e.g. "BookName.epub.an" -> "BookName")
-  const displayName = filename.replace(/\.epub\.an$/i, '').replace(/\.an$/i, '');
+  // 优先使用 metadata 中的书名，fallback 到文件名提取
+  const displayName = metadata?.bookName || filename.replace(/\.epub\.an$/i, '').replace(/\.an$/i, '');
+  const author = metadata?.author;
 
-  return notes.map(note => ({
-    ...note,
-    bookTitle: displayName
-  }));
+  return notes.map(note => {
+    // 构建 rawData：如果原有 rawData 是 array，保留；否则添加 author
+    const rawData = Array.isArray(note.rawData)
+      ? note.rawData
+      : author
+        ? { ...(note.rawData as object || {}), author }
+        : note.rawData;
+
+    return {
+      ...note,
+      bookTitle: displayName,
+      rawData
+    };
+  });
 }

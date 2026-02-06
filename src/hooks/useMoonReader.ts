@@ -8,7 +8,7 @@ import { useConfig } from './useConfig';
 import { useWebDavClient } from './useWebDavClient';
 import { listDirectory, readFile } from '../utils/webdav-client';
 import { parseWebDAVXml } from '../utils/webdav-parser';
-import { parseMoonReaderFile } from '../adapters/moon-reader';
+import { parseMoonReaderFile, parseBooksSync } from '../adapters/moon-reader';
 import {
     needsUpdate,
     saveToCache,
@@ -72,7 +72,25 @@ export function useMoonReader() {
 
             console.log(`[MoonReader] 发现 ${files.length} 个 .an 文件`);
 
-            // 2. 检查哪些文件需要更新
+            // 2. 下载并解析 books.sync 获取书籍元数据
+            let metadataMap = new Map<string, any>();
+            try {
+                const booksSyncPath = `${moonConfig.syncPath.replace(/\/$/, '')}/.Moon+/books.sync`;
+                console.log(`[MoonReader] 下载 books.sync...`);
+                const booksSyncBuffer = await readFile<ArrayBuffer>(
+                    client,
+                    moonConfig.webdav.url,
+                    booksSyncPath,
+                    proxyConfig.url,
+                    { responseType: 'arraybuffer' }
+                );
+                metadataMap = parseBooksSync(booksSyncBuffer);
+                console.log(`[MoonReader] 解析到 ${metadataMap.size} 本书籍元数据`);
+            } catch (e) {
+                console.warn(`[MoonReader] books.sync 下载失败，将使用文件名作为书名:`, e);
+            }
+
+            // 3. 检查哪些文件需要更新
             const updateQueue = [];
             const allNotes: UnifiedNote[] = [];
             const processedFiles = new Set<string>();
@@ -111,8 +129,12 @@ export function useMoonReader() {
                             { responseType: 'arraybuffer' }
                         );
 
-                        // 解析
-                        const notes = await parseMoonReaderFile(buffer, file.filename);
+                        // 获取对应的元数据
+                        const baseFilename = file.basename.replace(/\.an$/, '');
+                        const metadata = metadataMap.get(baseFilename);
+
+                        // 解析（传入元数据）
+                        const notes = await parseMoonReaderFile(buffer, file.filename, metadata);
 
                         // 缓存
                         await saveToCache(file.filename, file.lastmod, notes);
