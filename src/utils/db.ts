@@ -38,12 +38,15 @@ export interface AnxCache {
   notes: UnifiedNote[];
 }
 
+import type { MoonFileCache } from './moon-cache';
+
 /**
  * ReDav 数据库实例
  */
 class ReDavDatabase extends Dexie {
   configs!: EntityTable<StoredConfig, 'id'>;
   anxCache!: EntityTable<AnxCache, 'id'>;
+  moonCache!: EntityTable<MoonFileCache, 'filename'>;
 
   constructor() {
     super('redav_db');
@@ -58,6 +61,13 @@ class ReDavDatabase extends Dexie {
       configs: 'id',
       anxCache: 'id',
     });
+
+    // 版本 3：添加 MoonReader 缓存表
+    this.version(3).stores({
+      configs: 'id',
+      anxCache: 'id',
+      moonCache: 'filename', // 使用文件名作为主键
+    });
   }
 }
 
@@ -65,3 +75,4 @@ class ReDavDatabase extends Dexie {
  * 导出数据库单例实例
  */
 export const db = new ReDavDatabase();
+export type { MoonFileCache }; // 导出类型供 hooks 使用

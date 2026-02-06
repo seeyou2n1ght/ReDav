@@ -131,14 +131,16 @@ export async function listDirectory(
  * @param webdavBaseUrl - WebDAV 基础 URL
  * @param path - 文件路径（如 /notes/notes.json）
  * @param proxyUrl - Proxy 服务器地址
- * @returns 文件内容（文本格式）
+ * @param options - 请求选项 (如 responseType)
+ * @returns 文件内容
  */
-export async function readFile(
+export async function readFile<T = string>(
   client: AxiosInstance,
   webdavBaseUrl: string,
   path: string,
-  proxyUrl: string
-): Promise<string> {
+  proxyUrl: string,
+  options?: { responseType?: 'arraybuffer' | 'text' | 'json' }
+): Promise<T> {
   // 确保路径以 / 开头
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
   // 构建 WebDAV 完整 URL
@@ -149,8 +151,9 @@ export async function readFile(
   const config: AxiosRequestConfig = {
     method: 'GET',
     url,
+    responseType: options?.responseType,
   };
 
   const response = await client.request(config);
-  return response.data as string;
+  return response.data as T;
 }
