@@ -5,6 +5,8 @@
 
 import Dexie, { type EntityTable } from 'dexie';
 import type { AppConfig } from '../types';
+import type { UnifiedNote } from '../adapters/types';
+import type { AnxBook } from '../adapters/anx-reader';
 
 /**
  * 数据库中存储的配置对象
@@ -21,17 +23,40 @@ export interface StoredConfig {
 }
 
 /**
+ * AnxReader 缓存数据
+ */
+export interface AnxCache {
+  /** 固定 ID，始终为 'anx-cache' */
+  id: string;
+  /** 数据库文件的 ETag 或 Last-Modified */
+  etag: string;
+  /** 缓存时间 */
+  cachedAt: Date;
+  /** 书籍列表 */
+  books: AnxBook[];
+  /** 笔记列表 */
+  notes: UnifiedNote[];
+}
+
+/**
  * ReDav 数据库实例
  */
 class ReDavDatabase extends Dexie {
   configs!: EntityTable<StoredConfig, 'id'>;
+  anxCache!: EntityTable<AnxCache, 'id'>;
 
   constructor() {
     super('redav_db');
 
-    // 定义数据库 Schema（版本 1）
+    // 版本 1：配置表
     this.version(1).stores({
-      configs: 'id', // 主键为 id
+      configs: 'id',
+    });
+
+    // 版本 2：添加 AnxReader 缓存表
+    this.version(2).stores({
+      configs: 'id',
+      anxCache: 'id',
     });
   }
 }
