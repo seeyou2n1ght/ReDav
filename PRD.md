@@ -49,17 +49,17 @@ SaaS 模式	官方托管 (redav.app)	官方公共 Proxy	小白用户，开箱即
 
         [x] 初始化项目代码结构（Vite + React + TypeScript）。
 
-        [ ] 实现 Proxy：处理 CORS，透传 Basic Auth，支持 X-Proxy-Auth 保护。
+        [x] 实现 Proxy：处理 CORS，透传 Basic Auth，支持 X-Proxy-Auth 保护。
 
         [x] 封装 useWebDav Hook：实现 XML 解析，支持 ls/cat 操作。
 
     核心业务
 
-        [ ] AnxReader 适配器：解析 JSON 提取高亮与笔记。
+        [x] AnxReader 适配器：解析 SQLite 数据库提取高亮与笔记。
 
-        [ ] MoonReader(静读天下)适配器：解析 .po 文件提取阅读进度。
+        [x] MoonReader(静读天下)适配器：解析 .an 文件（pako 解压 + Gap Analysis）。
 
-        [ ] UI 构建：实现“网格书架”与“笔记流”视图 (shadcn/ui)。
+        [ ] UI 构建：实现"网格书架"与"笔记流"视图 (shadcn/ui)。
 
     基础导出
 

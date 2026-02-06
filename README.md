@@ -41,18 +41,34 @@ npm run build
 
 ## 开发进度
 
-### 已完成
+### ✅ 已完成
 
+- ✅ **WebDAV Proxy** - Cloudflare Pages Function 实现
+  - 支持 PROPFIND、GET 请求
+  - 完整的 CORS 处理
+  - Basic Authentication 透传
+  
 - ✅ **useWebDav Hook** - 支持 WebDAV 的 ls（列出目录）和 cat（读取文件）操作
   - 集成 TanStack Query，提供自动缓存和状态管理
   - 支持通过 Proxy 透传请求，避免 CORS 问题
   - 完整的 TypeScript 类型定义
+  - 支持二进制文件读取（arraybuffer）
 
-### 进行中
+- ✅ **AnxReader 适配器** - SQLite 数据库解析
+  - 基于 sql.js 的浏览器端解析
+  - IndexedDB 缓存 + ETag 增量同步
+  - 书籍与笔记聚合
 
-- 🚧 WebDAV Proxy 实现（Cloudflare Pages Function）
-- 🚧 阅读器适配器（AnxReader、MoonReader）
-- 🚧 UI 组件开发
+- ✅ **MoonReader 适配器** - .an 文件解压与 Gap Analysis 解析
+  - pako 多重解压策略（inflateRaw → inflate → ungzip）
+  - Gap Analysis 算法精准提取笔记
+  - 并行下载优化（限流 5 个）
+  - IndexedDB 缓存 + lastModified 增量同步
+
+### 🚧 进行中
+
+- 🚧 **聚合层开发** - useAllNotes Hook
+- 🚧 **UI 组件开发** - 书架视图、笔记流视图
 
 ## 项目结构
 
