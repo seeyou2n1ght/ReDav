@@ -4,29 +4,36 @@
  */
 
 import axios, { type AxiosInstance, type AxiosRequestConfig } from 'axios';
-import type { AppConfig } from '../types';
 import { encodeBasicAuth } from './auth';
 
 /**
  * WebDAV 请求错误类型
  */
 export class WebDAVError extends Error {
+  statusCode?: number;
+  originalError?: unknown;
+
   constructor(
     message: string,
-    public statusCode?: number,
-    public originalError?: unknown
+    statusCode?: number,
+    originalError?: unknown
   ) {
     super(message);
     this.name = 'WebDAVError';
+    this.statusCode = statusCode;
+    this.originalError = originalError;
   }
 }
 
 /**
  * 创建 WebDAV 客户端实例
- * @param config - 应用配置（包含 WebDAV 和 Proxy 配置）
+ * @param config - WebDAV 连接配置（包含 webdav 和 proxy 配置）
  * @returns 配置好的 axios 实例
  */
-export function createWebDAVClient(config: AppConfig): AxiosInstance {
+export function createWebDAVClient(config: {
+  webdav: { username: string; password: string };
+  proxy: { token?: string };
+}): AxiosInstance {
   const instance = axios.create({
     timeout: 30000,
   });

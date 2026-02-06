@@ -1,6 +1,6 @@
 # ReDav
 
-[![Deploy to Cloudflare Pages](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/YOUR_USERNAME/redav)
+[![Deploy to Cloudflare Pages](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/seeyou2n1ght/ReDav)
 
 > Re-read your journey. Your private Readwise on WebDAV.
 

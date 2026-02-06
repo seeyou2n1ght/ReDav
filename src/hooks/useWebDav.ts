@@ -4,55 +4,24 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { useWebDavClient } from './useWebDavClient';
+import { useWebDavClient, type WebDAVConnectionConfig } from './useWebDavClient';
 import { listDirectory, readFile } from '../utils/webdav-client';
 import { parseWebDAVXml } from '../utils/webdav-parser';
-import type { AppConfig } from '../types';
-
-/**
- * useWebDav Hook 返回类型
- */
-export interface UseWebDavResult {
-  /**
-   * 列出目录内容
-   * @param path - 目录路径（如 '/notes'）
-   * @param options - 查询选项（如 enabled 是否启用查询）
-   */
-  ls: <T = typeof queryFn>(
-    path: string,
-    options?: { enabled?: boolean }
-  ) => {
-    data: ReturnType<typeof queryFn> | undefined;
-    isLoading: boolean;
-    error: unknown;
-    refetch: () => void;
-  };
-
-  /**
-   * 读取文件内容
-   * @param path - 文件路径（如 '/notes/notes.json'）
-   * @param options - 查询选项（如 enabled 是否启用查询）
-   */
-  cat: <T = typeof queryFn>(
-    path: string,
-    options?: { enabled?: boolean }
-  ) => {
-    data: T | undefined;
-    isLoading: boolean;
-    error: unknown;
-    refetch: () => void;
-  };
-}
 
 /**
  * WebDAV 操作 Hook
- * @param config - 应用配置（包含 WebDAV 和 Proxy 配置）
+ * @param config - WebDAV 连接配置（包含 webdav 和 proxy 配置）
  * @returns 包含 ls 和 cat 操作的对象
  *
  * @example
  * ```tsx
- * const { webdav, proxy } = useAppConfig();
- * const webDav = useWebDav({ webdav, proxy });
+ * // 从 AppConfig 中提取单个阅读器的配置
+ * const readerConfig = config.readers.anxReader;
+ * const connectionConfig = {
+ *   webdav: readerConfig.webdav,
+ *   proxy: config.proxy,
+ * };
+ * const webDav = useWebDav(connectionConfig);
  *
  * // 列出目录
  * const { data: items, isLoading, error } = webDav.ls('/notes');
@@ -61,11 +30,11 @@ export interface UseWebDavResult {
  * const { data: content } = webDav.cat('/notes/notes.json');
  * ```
  */
-export function useWebDav(config: AppConfig): UseWebDavResult {
+export function useWebDav(config: WebDAVConnectionConfig) {
   const client = useWebDavClient(config);
 
   // ls 操作：列出目录内容
-  const ls = <T = ReturnType<typeof parseWebDAVXml>>(
+  const ls = (
     path: string,
     options?: { enabled?: boolean }
   ) => {
@@ -87,7 +56,7 @@ export function useWebDav(config: AppConfig): UseWebDavResult {
   };
 
   // cat 操作：读取文件内容
-  const cat = <T = string>(
+  const cat = (
     path: string,
     options?: { enabled?: boolean }
   ) => {
