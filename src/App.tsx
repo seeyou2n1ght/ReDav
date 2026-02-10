@@ -3,7 +3,7 @@
  * 路由配置和全局状态判断
  */
 
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { useConfig } from './hooks/useConfig';
 import { Layout } from './components/Layout';
 import { WelcomePage } from './pages/WelcomePage';
@@ -38,11 +38,16 @@ function AppRoutes() {
       />
 
       {/* 主应用布局 */}
-      <Route path="/" element={hasConfig ? <Layout /> : <Navigate to="/welcome" replace />}>
-        <Route index element={<Navigate to="/shelf" replace />} />
-        <Route path="shelf" element={<ShelfPage />} />
-        <Route path="notes" element={<NotesPage />} />
-        <Route path="config" element={<ConfigPage />} />
+      <Route element={<Layout />}>
+        {/* 配置页 - 始终允许访问 */}
+        <Route path="/config" element={<ConfigPage />} />
+
+        {/* 受保护路由 - 需要配置 */}
+        <Route element={hasConfig ? <Outlet /> : <Navigate to="/welcome" replace />}>
+          <Route path="/" element={<Navigate to="/shelf" replace />} />
+          <Route path="/shelf" element={<ShelfPage />} />
+          <Route path="/notes" element={<NotesPage />} />
+        </Route>
       </Route>
 
       {/* 404 重定向 */}

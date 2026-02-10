@@ -15,6 +15,7 @@ interface EventContext {
 // Cloudflare Pages Function 导出格式
 export async function onRequest(context: EventContext): Promise<Response> {
   const { request, env } = context;
+  console.log(`[Proxy] ${request.method} ${request.url}`);
 
   // 添加 CORS 头的辅助函数
   const corsHeaders = {

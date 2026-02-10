@@ -23,12 +23,12 @@ export interface LibraryData {
 }
 
 export function useLibrary(): LibraryData {
-    const { config: appConfig } = useConfig();
+    const { config: appConfig, isLoading: isConfigLoading } = useConfig();
 
     // 1. 获取所有启用的阅读器配置
     const enabledReaders = useMemo(() => {
         if (!appConfig?.readers) return [];
-        return Object.entries(appConfig.readers)
+        const readers = Object.entries(appConfig.readers)
             .filter(([, cfg]) => cfg?.enabled)
             .map(([type, cfg]) => ({
                 type: type as ReaderType,
@@ -39,21 +39,50 @@ export function useLibrary(): LibraryData {
                     proxy: appConfig.proxy,
                 }),
             }));
-    }, [appConfig]);
+        return readers;
+    }, [appConfig, isConfigLoading]);
 
     // 2. 并行获取每个阅读器的目录列表
     const listQueries = useQueries({
         queries: enabledReaders.map(({ type, readerConfig, client }) => ({
             queryKey: ['library', 'ls', type, readerConfig.webdav.url, readerConfig.syncPath],
             queryFn: async () => {
-                const xml = await listDirectory(
-                    client,
-                    readerConfig.webdav.url,
-                    readerConfig.syncPath,
-                    appConfig?.proxy.url || ''
-                );
-                const items = parseWebDAVXml(xml);
-                return { type, readerConfig, items };
+                try {
+                    let xml = await listDirectory(
+                        client,
+                        readerConfig.webdav.url,
+                        readerConfig.syncPath,
+                        appConfig?.proxy.url || ''
+                    );
+
+                    let items = parseWebDAVXml(xml);
+
+                    // AnxReader 特殊处理：如果根目录下没有 database7.db 但有 anx 目录，则深入查找
+                    if (type === 'anxReader' && !items.some(i => i.basename === 'database7.db')) {
+                        const anxDir = items.find(i => i.basename === 'anx' && i.type === 'directory');
+                        if (anxDir) {
+                            // 构造新的探测路径
+                            // WebDAV 路径通常是 href，我们需要基于 syncPath 确保路径更正确，
+                            // 但 listDirectory 使用的是相对于 webdav.url 的路径或绝对路径。
+                            // 简单起见，我们尝试使用 /anx 后缀
+                            const subPath = readerConfig.syncPath.endsWith('/')
+                                ? `${readerConfig.syncPath}anx`
+                                : `${readerConfig.syncPath}/anx`;
+
+                            xml = await listDirectory(
+                                client,
+                                readerConfig.webdav.url,
+                                subPath,
+                                appConfig?.proxy.url || ''
+                            );
+                            items = parseWebDAVXml(xml);
+                        }
+                    }
+
+                    return { type, readerConfig, items };
+                } catch (e) {
+                    throw e;
+                }
             },
             staleTime: 60 * 1000, // 1分钟
             enabled: !!appConfig,
@@ -81,8 +110,11 @@ export function useLibrary(): LibraryData {
             const adapters = getRegisteredAdapters();
 
             items.forEach(item => {
+                // Skip directories
+                if (item.type === 'directory') return;
+
                 // 检查是否有适配器支持此文件
-                const adapter = adapters.find(a => a.filePattern.test(item.filename));
+                const adapter = adapters.find(a => a.filePattern.test(item.basename));
                 if (adapter) {
                     tasks.push({
                         readerType: type,
@@ -104,28 +136,45 @@ export function useLibrary(): LibraryData {
         queries: filesToDownload.map(task => ({
             queryKey: ['library', 'parse', task.readerType, task.webdavUrl, task.fileItem.filename, task.fileItem.lastmod],
             queryFn: async () => {
-                const fullPath = `${task.syncPath}/${task.fileItem.filename}`.replace(/\/+/g, '/');
+                // 构造相对路径用于 readFile
+                try {
+                    // task.fileItem.filename 是 WebDAV 返回的绝对路径（如 /app/backup/anx/database7.db）
+                    // task.webdavUrl 是配置的基础 URL（如 https://dav.seeyou2night.day/app/backup)
+                    // readFile 需要的是相对于 webdavBaseUrl 的路径
 
-                // 1. 下载
-                const buffer = await readFile<ArrayBuffer>(
-                    task.client,
-                    task.webdavUrl,
-                    fullPath,
-                    task.proxyUrl,
-                    { responseType: 'arraybuffer' }
-                );
+                    // 提取 webdavUrl 的 pathname 部分（如 /app/backup）
+                    const basePathname = new URL(task.webdavUrl).pathname;
 
-                // 2. 解析
-                if (task.readerType === 'moonReader') {
-                    const { parseMoonReaderFile } = await import('../adapters/moon-reader');
-                    return await parseMoonReaderFile(buffer, task.fileItem.filename);
-                } else if (task.readerType === 'anxReader') {
-                    const { parseAnxDatabase } = await import('../adapters/anx-reader');
-                    const result = await parseAnxDatabase(buffer);
-                    return result.notes;
+                    // 计算相对路径
+                    let relativePath = task.fileItem.filename;
+                    if (basePathname && basePathname !== '/' && relativePath.startsWith(basePathname)) {
+                        // 如果 filename 以 basePathname 开头，去掉这部分得到相对路径
+                        relativePath = relativePath.substring(basePathname.length);
+                    }
+
+                    // 1. 下载
+                    const buffer = await readFile<ArrayBuffer>(
+                        task.client,
+                        task.webdavUrl,
+                        relativePath,
+                        task.proxyUrl,
+                        { responseType: 'arraybuffer' }
+                    );
+
+                    // 2. 解析
+                    if (task.readerType === 'moonReader') {
+                        const { parseMoonReaderFile } = await import('../adapters/moon-reader');
+                        return await parseMoonReaderFile(buffer, task.fileItem.filename);
+                    } else if (task.readerType === 'anxReader') {
+                        const { parseAnxDatabase } = await import('../adapters/anx-reader');
+                        const result = await parseAnxDatabase(buffer);
+                        return result.notes;
+                    }
+
+                    return [] as UnifiedNote[];
+                } catch (error) {
+                    return [] as UnifiedNote[];
                 }
-
-                return [] as UnifiedNote[];
             },
             staleTime: 5 * 60 * 1000,
         })),

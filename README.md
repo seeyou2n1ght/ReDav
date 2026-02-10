@@ -148,9 +148,12 @@ const config: AppConfig = {
 - **后端**: Cloudflare Workers
 - **部署**: Cloudflare Pages
 
-## 开发计划
+## 开发计划与文档
 
-参见 [PRD.md](./PRD.md) 了解详细的产品需求文档和开发路线图。
+- [产品需求文档 (PRD)](./docs/PRD.md)
+- [技术规格说明书 (SPEC)](./docs/SPEC.md)
+
+参见上述文档了解详细的产品需求、技术架构和开发路线图。
 
 ## 许可证
 

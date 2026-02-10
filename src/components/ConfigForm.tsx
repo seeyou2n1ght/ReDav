@@ -3,18 +3,20 @@
  * 支持多阅读器独立配置
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useConfig } from '../hooks/useConfig';
 import { READER_DEFAULTS, type AppConfig, type ReaderType, type ReaderConfig } from '../types';
+import { createWebDAVClient, listDirectory } from '../utils/webdav-client';
 
 // 默认 Proxy URL
-const DEFAULT_PROXY_URL = '/proxy';
+const DEFAULT_PROXY_URL = '/api/proxy';
 
 // 所有支持的阅读器类型
-const READER_TYPES: ReaderType[] = ['anxReader', 'moonReader', 'koReader'];
+// 暂时隐藏 koReader，适配器逻辑未完成
+const READER_TYPES: ReaderType[] = ['anxReader', 'moonReader'];
 
 export function ConfigForm() {
-    const { updateConfig } = useConfig();
+    const { config, updateConfig } = useConfig();
 
     // 当前选中的阅读器 Tab
     const [activeTab, setActiveTab] = useState<ReaderType>('anxReader');
@@ -28,8 +30,20 @@ export function ConfigForm() {
 
     // UI 状态
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isTesting, setIsTesting] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [success, setSuccess] = useState(false);
+    const [success, setSuccess] = useState<string | null>(null);
+
+    // 当全局配置加载完成时，同步到本地状态
+    useEffect(() => {
+        if (config) {
+            setReadersConfig(config.readers || {});
+            setProxyUrl(config.proxy?.url || DEFAULT_PROXY_URL);
+            setProxyToken(config.proxy?.token || '');
+        }
+    }, [config]);
+
+
 
     // 获取当前阅读器配置
     const getCurrentReaderConfig = (): ReaderConfig => {
@@ -55,6 +69,35 @@ export function ConfigForm() {
         updateReaderConfig({
             webdav: { ...current.webdav, [field]: value },
         });
+    };
+
+    // 测试连接
+    const handleTestConnection = async () => {
+        const current = getCurrentReaderConfig();
+        if (!current.webdav.url || !current.webdav.username || !current.webdav.password) {
+            setError('请先填写完整的 WebDAV 信息');
+            return;
+        }
+
+        setIsTesting(true);
+        setError(null);
+        setSuccess(null);
+
+        try {
+            const client = createWebDAVClient({
+                webdav: current.webdav,
+                proxy: { token: proxyToken || undefined }
+            });
+
+            // 尝试列出目录
+            await listDirectory(client, current.webdav.url, current.syncPath, proxyUrl);
+            setSuccess('连接成功！目录读取正常');
+        } catch (err: any) {
+            console.error('Test connection failed:', err);
+            setError(`连接失败: ${err.message || '未知错误'}`);
+        } finally {
+            setIsTesting(false);
+        }
     };
 
     // 提交表单
@@ -89,7 +132,7 @@ export function ConfigForm() {
 
         setIsSubmitting(true);
         setError(null);
-        setSuccess(false);
+        setSuccess(null);
 
         try {
             const config: AppConfig = {
@@ -101,7 +144,8 @@ export function ConfigForm() {
             };
 
             await updateConfig(config);
-            setSuccess(true);
+            await updateConfig(config);
+            setSuccess('配置保存成功！');
         } catch (err) {
             setError(err instanceof Error ? err.message : '保存配置失败');
         } finally {
@@ -135,8 +179,8 @@ export function ConfigForm() {
                                         type="button"
                                         onClick={() => setActiveTab(type)}
                                         className={`flex-1 py-3 text-sm font-medium transition-all ${isActive
-                                                ? 'border-b-2 border-indigo-500 text-indigo-600'
-                                                : 'text-gray-500 hover:text-gray-700'
+                                            ? 'border-b-2 border-indigo-500 text-indigo-600'
+                                            : 'text-gray-500 hover:text-gray-700'
                                             }`}
                                     >
                                         <span className="mr-1">{readerMeta.icon}</span>
@@ -206,10 +250,10 @@ export function ConfigForm() {
                                         />
                                     </div>
 
-                                    {/* 同步路径 */}
+                                    {/* 书库根目录 (原同步路径) */}
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                                            同步路径
+                                            书库根目录
                                         </label>
                                         <input
                                             type="text"
@@ -218,9 +262,21 @@ export function ConfigForm() {
                                             placeholder={meta.defaultPath}
                                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                                         />
-                                        <p className="mt-1 text-xs text-gray-500">
-                                            默认: {meta.defaultPath}（会拼接到 WebDAV 地址后）
+                                        <p className="mt-1 text-xs text-gray-500 break-all">
+                                            完整路径: {currentConfig.webdav.url.replace(/\/$/, '')}/{currentConfig.syncPath.replace(/^\//, '')}
                                         </p>
+                                    </div>
+
+                                    {/* 测试连接按钮 */}
+                                    <div className="pt-2">
+                                        <button
+                                            type="button"
+                                            onClick={handleTestConnection}
+                                            disabled={isTesting || !currentConfig.webdav.url}
+                                            className="text-sm px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+                                        >
+                                            {isTesting ? '正在测试...' : '🔌 测试连接'}
+                                        </button>
                                     </div>
                                 </>
                             )}
@@ -267,7 +323,7 @@ export function ConfigForm() {
                         )}
                         {success && (
                             <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                                <p className="text-sm text-green-600">✅ 配置保存成功！</p>
+                                <p className="text-sm text-green-600">✅ {success}</p>
                             </div>
                         )}
 

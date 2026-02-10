@@ -88,7 +88,7 @@ function buildProxyUrl(proxyUrl: string, targetUrl: string): string {
   const baseUrl = proxyUrl.replace(/\/$/, '');
   // 对目标 URL 进行编码
   const encodedTarget = encodeURIComponent(targetUrl);
-  return `${baseUrl}/proxy?target=${encodedTarget}`;
+  return `${baseUrl}?target=${encodedTarget}`;
 }
 
 /**
