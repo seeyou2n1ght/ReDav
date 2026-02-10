@@ -1,36 +1,184 @@
 /**
  * 笔记页
- * 双栏布局：左侧图书/章节，右侧笔记列表
+ * 双栏布局：左侧图书列表/章节目录，右侧笔记流
  */
 
+import { useState, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { useLibrary } from '../hooks/useLibrary';
+import { type UnifiedNote, type UnifiedBook } from '../types';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
+
 export function NotesPage() {
-    return (
-        <div className="flex h-full">
-            {/* 左栏：图书和章节树 */}
-            <div className="w-64 border-r bg-white p-4 hidden md:block">
-                <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
-                    图书
-                </h2>
-                <div className="text-center text-gray-400 py-8">
-                    <p className="text-2xl mb-2">📖</p>
-                    <p className="text-sm">暂无图书</p>
+    const [searchParams, setSearchParams] = useSearchParams();
+    const { books, notes, isLoading, refresh } = useLibrary();
+
+    // 从 URL 获取当前选中的书名
+    const selectedBookTitle = searchParams.get('book');
+    const [searchQuery, setSearchQuery] = useState('');
+
+    // 过滤笔记
+    const filteredNotes = useMemo(() => {
+        if (!selectedBookTitle) return [];
+        return notes.filter(n => n.bookTitle === selectedBookTitle);
+    }, [selectedBookTitle, notes]);
+
+    // 当前选中的书对象
+    const currentBook = books.find(b => b.title === selectedBookTitle);
+
+    // 未选中书籍时显示引导
+    if (!selectedBookTitle) {
+        return (
+            <div className="flex bg-gray-50 h-full">
+                <BookSidebar books={books} onSelect={(title) => setSearchParams({ book: title })} selectedTitle={null} />
+                <div className="flex-1 flex items-center justify-center text-gray-400">
+                    <div className="text-center">
+                        <p className="text-6xl mb-4">👈</p>
+                        <p className="text-xl">请在左侧选择一本书</p>
+                    </div>
                 </div>
             </div>
+        );
+    }
 
-            {/* 右栏：笔记列表 */}
-            <div className="flex-1 p-6">
-                <div className="mb-6">
-                    <h1 className="text-2xl font-bold text-gray-800">笔记</h1>
-                    <p className="text-gray-500 mt-1">浏览和管理你的阅读笔记</p>
-                </div>
+    return (
+        <div className="flex h-full bg-gray-50 overflow-hidden">
+            {/* 左侧边栏：图书列表（或章节目录，暂未实现章节树，先显示图书列表以便切换） */}
+            <div className="hidden md:block w-72 border-r bg-white flex-shrink-0">
+                <BookSidebar
+                    books={books}
+                    onSelect={(title) => setSearchParams({ book: title })}
+                    selectedTitle={selectedBookTitle}
+                />
+            </div>
 
-                {/* 笔记卡片占位 */}
-                <div className="bg-white rounded-xl border p-8 text-center text-gray-500">
-                    <p className="text-4xl mb-4">📝</p>
-                    <p className="text-lg font-medium mb-2">暂无笔记</p>
-                    <p className="text-sm">选择左侧的图书查看笔记</p>
-                </div>
+            {/* 右侧：笔记流 */}
+            <div className="flex-1 flex flex-col h-full overflow-hidden">
+                {/* 顶部 Header */}
+                <header className="bg-white border-b px-6 py-4 flex justify-between items-center shadow-sm z-10">
+                    <div>
+                        <h1 className="text-xl font-bold text-gray-900 line-clamp-1" title={currentBook?.title}>
+                            {currentBook?.title || selectedBookTitle}
+                        </h1>
+                        <div className="flex items-center gap-2 mt-1">
+                            <span className="text-xs text-gray-500">
+                                {currentBook?.author ? `${currentBook.author} · ` : ''}
+                                {filteredNotes.length} 条笔记
+                            </span>
+                            {currentBook?.sourceApps.map(app => (
+                                <Badge key={app} variant="secondary" className="text-[10px] px-1 h-4">
+                                    {app}
+                                </Badge>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="flex gap-2">
+                        <Input
+                            placeholder="搜索笔记..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-48 h-8 text-sm"
+                        />
+                        <Button variant="ghost" size="sm" onClick={() => refresh()}>
+                            ↻
+                        </Button>
+                    </div>
+                </header>
+
+                {/* 笔记列表 ScrollArea */}
+                <ScrollArea className="flex-1 p-6">
+                    <div className="max-w-3xl mx-auto space-y-6 pb-20">
+                        {isLoading && filteredNotes.length === 0 ? (
+                            <div className="space-y-4">
+                                <Skeleton className="h-32 w-full" />
+                                <Skeleton className="h-24 w-full" />
+                                <Skeleton className="h-40 w-full" />
+                            </div>
+                        ) : filteredNotes.length === 0 ? (
+                            <div className="text-center py-20 text-gray-400">
+                                <p>暂无笔记</p>
+                            </div>
+                        ) : (
+                            filteredNotes
+                                .filter(note => !searchQuery || note.highlight?.includes(searchQuery) || note.note?.includes(searchQuery))
+                                .map((note) => (
+                                    <NoteCard key={note.id} note={note} />
+                                ))
+                        )}
+                    </div>
+                </ScrollArea>
             </div>
         </div>
+    );
+}
+
+function BookSidebar({ books, onSelect, selectedTitle }: { books: UnifiedBook[], onSelect: (t: string) => void, selectedTitle: string | null }) {
+    return (
+        <div className="flex flex-col h-full">
+            <div className="p-4 border-b">
+                <h2 className="font-semibold text-gray-700">图书列表</h2>
+            </div>
+            <ScrollArea className="flex-1">
+                <div className="p-2 space-y-1">
+                    {books.map(book => (
+                        <button
+                            key={book.title}
+                            onClick={() => onSelect(book.title)}
+                            className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${selectedTitle === book.title
+                                ? 'bg-indigo-50 text-indigo-700 font-medium'
+                                : 'text-gray-600 hover:bg-gray-100'
+                                }`}
+                        >
+                            <div className="line-clamp-1">{book.title}</div>
+                            <div className="text-xs text-gray-400 mt-0.5 flex justify-between">
+                                <span>{book.noteCount} 笔记</span>
+                            </div>
+                        </button>
+                    ))}
+                </div>
+            </ScrollArea>
+        </div>
+    );
+}
+
+function NoteCard({ note }: { note: UnifiedNote }) {
+    return (
+        <Card className="border-l-4 border-l-indigo-500 shadow-sm hover:shadow-md transition-shadow">
+            <CardContent className="pt-6">
+                {/* 章节/元信息 */}
+                <div className="flex justify-between items-center mb-3 text-xs text-gray-400">
+                    <span className="bg-gray-100 px-2 py-0.5 rounded">
+                        {note.chapter || '未知章节'}
+                    </span>
+                    <span>
+                        {new Date(note.createdAt).toLocaleString()}
+                        {note.page && ` · P${note.page}`}
+                    </span>
+                </div>
+
+                {/* 高亮内容 */}
+                {note.highlight && (
+                    <div className="relative pl-4 mb-4">
+                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-gray-200 rounded-full" />
+                        <blockquote className="text-gray-800 leading-relaxed whitespace-pre-wrap font-serif text-lg">
+                            {note.highlight}
+                        </blockquote>
+                    </div>
+                )}
+
+                {/* 用户笔记 */}
+                {note.note && (
+                    <div className="mt-4 bg-yellow-50 p-3 rounded-lg border border-yellow-100 text-gray-700 text-sm">
+                        <span className="font-bold text-yellow-600 mr-2">💭 想法:</span>
+                        {note.note}
+                    </div>
+                )}
+            </CardContent>
+        </Card>
     );
 }
