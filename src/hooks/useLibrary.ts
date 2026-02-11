@@ -8,10 +8,10 @@ import { useQueries } from '@tanstack/react-query';
 import { useConfig } from './useConfig';
 import { createWebDAVClient, listDirectory, readFile } from '../utils/webdav-client';
 import { parseWebDAVXml } from '../utils/webdav-parser';
-import { parseFile } from '../adapters';
+import { parseFile, type ParseContext, type ParseResult } from '../adapters';
+import { findMoonReaderFiles, type MoonReaderAdapterConfig } from '../adapters/moon-reader-adapter';
 import type { UnifiedNote, ReaderType, ReaderConfig, UnifiedBook, WebDAVItem } from '../types';
 import type { AxiosInstance } from 'axios';
-import type { ParseContext } from '../adapters';
 
 interface ListQueryResult {
   type: ReaderType;
@@ -25,6 +25,8 @@ interface DownloadTask {
   client: AxiosInstance;
   proxyUrl: string;
   webdavUrl: string;
+  readerType: ReaderType;
+  adapterConfig?: MoonReaderAdapterConfig;
 }
 
 export interface LibraryData {
@@ -57,29 +59,48 @@ export function useLibrary(): LibraryData {
     queries: enabledReaders.map(({ type, readerConfig, client }) => ({
       queryKey: ['library', 'ls', type, readerConfig.webdav.url, readerConfig.syncPath],
       queryFn: async (): Promise<ListQueryResult> => {
-        let xml = await listDirectory(
-          client,
-          readerConfig.webdav.url,
-          readerConfig.syncPath,
-          appConfig?.proxy.url || ''
-        );
+        let xml: string;
+        let items: WebDAVItem[];
 
-        let items = parseWebDAVXml(xml);
+        if (type === 'moonReader') {
+          const moonConfig: MoonReaderAdapterConfig = {
+            syncPath: readerConfig.syncPath,
+            webdavUrl: readerConfig.webdav.url,
+            proxyUrl: appConfig?.proxy.url || '',
+            client,
+          };
+          const files = await findMoonReaderFiles(moonConfig);
+          items = files.map(f => ({
+            filename: f.filename,
+            basename: f.filename.split('/').pop() || f.filename,
+            lastmod: f.lastmod,
+            size: 0,
+            type: 'file' as const,
+          }));
+        } else {
+          xml = await listDirectory(
+            client,
+            readerConfig.webdav.url,
+            readerConfig.syncPath,
+            appConfig?.proxy.url || ''
+          );
+          items = parseWebDAVXml(xml);
 
-        if (type === 'anxReader' && !items.some(i => i.basename === 'database7.db')) {
-          const anxDir = items.find(i => i.basename === 'anx' && i.type === 'directory');
-          if (anxDir) {
-            const subPath = readerConfig.syncPath.endsWith('/')
-              ? `${readerConfig.syncPath}anx`
-              : `${readerConfig.syncPath}/anx`;
+          if (type === 'anxReader' && !items.some(i => i.basename === 'database7.db')) {
+            const anxDir = items.find(i => i.basename === 'anx' && i.type === 'directory');
+            if (anxDir) {
+              const subPath = readerConfig.syncPath.endsWith('/')
+                ? `${readerConfig.syncPath}anx`
+                : `${readerConfig.syncPath}/anx`;
 
-            xml = await listDirectory(
-              client,
-              readerConfig.webdav.url,
-              subPath,
-              appConfig?.proxy.url || ''
-            );
-            items = parseWebDAVXml(xml);
+              xml = await listDirectory(
+                client,
+                readerConfig.webdav.url,
+                subPath,
+                appConfig?.proxy.url || ''
+              );
+              items = parseWebDAVXml(xml);
+            }
           }
         }
 
@@ -97,17 +118,26 @@ export function useLibrary(): LibraryData {
 
     listQueries.forEach((query, index) => {
       if (!query.data) return;
-      const { readerConfig, items } = query.data;
+      const { type, readerConfig, items } = query.data;
       const { client } = enabledReaders[index];
 
       items.forEach(item => {
         if (item.type === 'directory') return;
-        if (!item.basename.endsWith('.db') && !item.basename.endsWith('.an')) return;
 
         const basePathname = new URL(readerConfig.webdav.url).pathname;
         let relativePath = item.filename;
         if (basePathname && basePathname !== '/' && relativePath.startsWith(basePathname)) {
           relativePath = relativePath.substring(basePathname.length);
+        }
+
+        let adapterConfig: MoonReaderAdapterConfig | undefined;
+        if (type === 'moonReader') {
+          adapterConfig = {
+            syncPath: readerConfig.syncPath,
+            webdavUrl: readerConfig.webdav.url,
+            proxyUrl: appConfig.proxy.url,
+            client,
+          };
         }
 
         tasks.push({
@@ -116,6 +146,8 @@ export function useLibrary(): LibraryData {
           client,
           proxyUrl: appConfig.proxy.url,
           webdavUrl: readerConfig.webdav.url,
+          readerType: type,
+          adapterConfig,
         });
       });
     });
@@ -125,7 +157,7 @@ export function useLibrary(): LibraryData {
 
   const parsedQueries = useQueries({
     queries: filesToDownload.map(task => ({
-      queryKey: ['library', 'parse', task.webdavUrl, task.filename, task.lastmod],
+      queryKey: ['library', 'parse', task.readerType, task.webdavUrl, task.filename, task.lastmod],
       queryFn: async (): Promise<UnifiedNote[]> => {
         const buffer = await readFile<ArrayBuffer>(
           task.client,
@@ -139,9 +171,17 @@ export function useLibrary(): LibraryData {
           buffer,
           filename: task.filename,
           baseUrl: task.webdavUrl,
+          adapterConfig: task.adapterConfig,
         };
 
-        const result = await parseFile(context);
+        let result: ParseResult;
+        if (task.readerType === 'moonReader' && task.adapterConfig) {
+          const { moonReaderAdapter } = await import('../adapters/moon-reader-adapter');
+          result = await moonReaderAdapter.parse(context);
+        } else {
+          result = await parseFile(context);
+        }
+
         return result.notes;
       },
       staleTime: 5 * 60 * 1000,

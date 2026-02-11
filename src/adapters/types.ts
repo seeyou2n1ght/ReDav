@@ -14,6 +14,8 @@ export interface ParseContext {
   filename: string;
   /** WebDAV 基础 URL（用于构建元数据路径） */
   baseUrl: string;
+  /** 适配器配置（可选，特定适配器可能需要） */
+  adapterConfig?: unknown;
 }
 
 /**
