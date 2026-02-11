@@ -7,6 +7,7 @@
 import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
+import { ThemeToggle } from './ThemeToggle';
 
 export function Layout() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -33,7 +34,10 @@ export function Layout() {
             </aside>
 
             {/* 主内容区 */}
-            <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+            <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative bg-background">
+                <div className="absolute top-4 right-4 z-50">
+                    <ThemeToggle />
+                </div>
                 {/* 移动端顶部栏 */}
                 <header className="lg:hidden flex items-center gap-4 px-4 py-3 bg-white border-b">
                     <button

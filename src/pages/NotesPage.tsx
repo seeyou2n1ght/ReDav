@@ -6,13 +6,14 @@
 import { useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useLibrary } from '../hooks/useLibrary';
-import { type UnifiedNote, type UnifiedBook } from '../types';
+import { type UnifiedBook } from '../types';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Card, CardContent } from '@/components/ui/card';
+
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { NoteCard } from '@/components/NoteCard';
 
 export function NotesPage() {
     const [searchParams, setSearchParams] = useSearchParams();
@@ -107,7 +108,7 @@ export function NotesPage() {
                             filteredNotes
                                 .filter(note => !searchQuery || note.highlight?.includes(searchQuery) || note.note?.includes(searchQuery))
                                 .map((note) => (
-                                    <NoteCard key={note.id} note={note} />
+                                    <NoteCard key={note.id} note={note} showBookTitle={!selectedBookTitle} />
                                 ))
                         )}
                     </div>
@@ -146,39 +147,4 @@ function BookSidebar({ books, onSelect, selectedTitle }: { books: UnifiedBook[],
     );
 }
 
-function NoteCard({ note }: { note: UnifiedNote }) {
-    return (
-        <Card className="border-l-4 border-l-indigo-500 shadow-sm hover:shadow-md transition-shadow">
-            <CardContent className="pt-6">
-                {/* 章节/元信息 */}
-                <div className="flex justify-between items-center mb-3 text-xs text-gray-400">
-                    <span className="bg-gray-100 px-2 py-0.5 rounded">
-                        {note.chapter || '未知章节'}
-                    </span>
-                    <span>
-                        {new Date(note.createdAt).toLocaleString()}
-                        {note.page && ` · P${note.page}`}
-                    </span>
-                </div>
 
-                {/* 高亮内容 */}
-                {note.highlight && (
-                    <div className="relative pl-4 mb-4">
-                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-gray-200 rounded-full" />
-                        <blockquote className="text-gray-800 leading-relaxed whitespace-pre-wrap font-serif text-lg">
-                            {note.highlight}
-                        </blockquote>
-                    </div>
-                )}
-
-                {/* 用户笔记 */}
-                {note.note && (
-                    <div className="mt-4 bg-yellow-50 p-3 rounded-lg border border-yellow-100 text-gray-700 text-sm">
-                        <span className="font-bold text-yellow-600 mr-2">💭 想法:</span>
-                        {note.note}
-                    </div>
-                )}
-            </CardContent>
-        </Card>
-    );
-}

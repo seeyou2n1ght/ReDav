@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { BookCover } from '@/components/ui/cover-generator';
 
 export function ShelfPage() {
     const navigate = useNavigate();
@@ -136,21 +137,14 @@ function BookCard({ book, onClick }: { book: UnifiedBook; onClick: () => void })
             className="group hover:shadow-lg transition-all duration-300 cursor-pointer overflow-hidden border-transparent hover:border-gray-200 bg-white"
             onClick={onClick}
         >
-            <div className="aspect-[2/3] bg-gradient-to-br from-indigo-50 to-purple-50 flex items-center justify-center p-6 relative overflow-hidden">
-                {/* 封面占位 - 后续可做成真实封面 */}
-                <div className="text-center transform group-hover:scale-105 transition-transform duration-500">
-                    <h3 className="font-bold text-gray-800 line-clamp-3 leading-tight mb-2">
-                        {book.title}
-                    </h3>
-                    {book.author && (
-                        <p className="text-xs text-gray-500 line-clamp-1">{book.author}</p>
-                    )}
-                </div>
+            {/* 动态封面 */}
+            <div className="relative aspect-[2/3] group-hover:shadow-xl transition-all duration-500 ease-out transform group-hover:-translate-y-1">
+                <BookCover title={book.title} author={book.author} className="w-full h-full" />
 
-                {/* 来源标记 */}
-                <div className="absolute top-2 right-2 flex gap-1">
+                {/* 来源标记 - 悬浮在右上角 */}
+                <div className="absolute top-2 right-2 flex gap-1 z-30">
                     {book.sourceApps.map(app => (
-                        <Badge key={app} variant="secondary" className="text-[10px] px-1 h-5 bg-white/80 backdrop-blur-sm">
+                        <Badge key={app} variant="secondary" className="text-[10px] px-1 h-5 bg-white/90 backdrop-blur-sm shadow-sm border border-black/5">
                             {app === 'AnxReader' ? '📚' : app === 'MoonReader' ? '🌙' : '📖'}
                         </Badge>
                     ))}
