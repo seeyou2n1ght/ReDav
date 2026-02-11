@@ -15,12 +15,14 @@ interface ExportState {
     // Template State
     savedTemplates: ExportTemplate[];
     currentTemplateId: string; // ID of the currently selected template
+    showConfigInModal: boolean; // Whether to show the config panel in the modal
 
     // Actions
     addTemplate: (template: ExportTemplate) => void;
     removeTemplate: (id: string) => void;
     updateTemplate: (id: string, content: string) => void;
     setCurrentTemplateId: (id: string) => void;
+    toggleShowConfig: (show?: boolean) => void;
 
     // Helper to get active template
     getActiveTemplate: () => ExportTemplate;
@@ -33,9 +35,14 @@ export const useExportStore = create<ExportState>()(
             context: null,
             savedTemplates: [...DEFAULT_TEMPLATES],
             currentTemplateId: DEFAULT_TEMPLATES[0].id,
+            showConfigInModal: true, // Default to showing config
 
             openModal: (context) => set({ isOpen: true, context }),
             closeModal: () => set({ isOpen: false, context: null }),
+
+            toggleShowConfig: (show) => set((state) => ({
+                showConfigInModal: show !== undefined ? show : !state.showConfigInModal
+            })),
 
             addTemplate: (template) =>
                 set((state) => ({
@@ -74,6 +81,7 @@ export const useExportStore = create<ExportState>()(
             partialize: (state) => ({
                 savedTemplates: state.savedTemplates,
                 currentTemplateId: state.currentTemplateId,
+                showConfigInModal: state.showConfigInModal,
             }), // Only persist templates and preference
         }
     )

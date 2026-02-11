@@ -11,6 +11,7 @@ import { ShelfPage } from './pages/ShelfPage';
 import { NotesPage } from './pages/NotesPage';
 import { ConfigPage } from './pages/ConfigPage';
 import { ExportConfigModal } from './components/Export/ExportConfigModal';
+import { Toaster } from '@/components/ui/sonner';
 
 function AppRoutes() {
   const { config, isLoading } = useConfig();
@@ -62,6 +63,7 @@ function App() {
     <BrowserRouter>
       <AppRoutes />
       <ExportConfigModal />
+      <Toaster />
     </BrowserRouter>
   );
 }
