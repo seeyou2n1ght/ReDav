@@ -1,11 +1,6 @@
-# ReDav - Cloudflare Pages Configuration
-# 文档: https://developers.cloudflare.com/pages/functions/wrangler-configuration/
-
 name = "redav"
 compatibility_date = "2024-01-01"
 
-# Pages Functions 自动从 /functions 目录加载
-# 无需额外配置路由
-
-[vars]
-# PROXY_TOKEN = "your-secret-token"  # 可选：启用后需在请求头带 X-Proxy-Auth
+[assets]
+directory = "./dist"
+binding = "ASSETS"
