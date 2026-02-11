@@ -9,10 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Checkbox } from '@/components/ui/checkbox';
 import { NoteCard } from '@/components/NoteCard';
-import { CheckSquare, Download, X, ListChecks } from 'lucide-react';
-import { cn } from '@/lib/utils'; // Keep imports clean
+import { CheckSquare, Download, X } from 'lucide-react';
 
 export function NotesPage() {
     const [searchParams, setSearchParams] = useSearchParams();
