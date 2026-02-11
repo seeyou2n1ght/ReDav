@@ -1,27 +1,31 @@
-/**
- * 笔记页
- * 双栏布局：左侧图书列表/章节目录，右侧笔记流
- */
-
 import { useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useLibrary } from '../hooks/useLibrary';
-import { type UnifiedBook } from '../types';
+import { useExportStore } from '../hooks/useExportStore';
+import { type UnifiedBook, type UnifiedNote } from '../types';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Checkbox } from '@/components/ui/checkbox';
 import { NoteCard } from '@/components/NoteCard';
+import { CheckSquare, Download, X, ListChecks } from 'lucide-react';
+import { cn } from '@/lib/utils'; // Keep imports clean
 
 export function NotesPage() {
     const [searchParams, setSearchParams] = useSearchParams();
     const { books, notes, isLoading, refresh } = useLibrary();
+    const { openModal } = useExportStore();
 
     // 从 URL 获取当前选中的书名
     const selectedBookTitle = searchParams.get('book');
     const [searchQuery, setSearchQuery] = useState('');
+
+    // Selection state
+    const [isSelectionMode, setIsSelectionMode] = useState(false);
+    const [selectedNoteIds, setSelectedNoteIds] = useState<Set<string>>(new Set());
 
     // 过滤笔记
     const filteredNotes = useMemo(() => {
@@ -29,8 +33,75 @@ export function NotesPage() {
         return notes.filter(n => n.bookTitle === selectedBookTitle);
     }, [selectedBookTitle, notes]);
 
+    // Apply search filter
+    const displayedNotes = useMemo(() => {
+        return filteredNotes.filter(note =>
+            !searchQuery ||
+            note.highlight?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            note.note?.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+    }, [filteredNotes, searchQuery]);
+
     // 当前选中的书对象
     const currentBook = books.find(b => b.title === selectedBookTitle);
+
+    // Handlers
+    const toggleSelectionMode = () => {
+        setIsSelectionMode(!isSelectionMode);
+        setSelectedNoteIds(new Set());
+    };
+
+    const toggleNoteSelection = (note: UnifiedNote) => {
+        const newSelected = new Set(selectedNoteIds);
+        // Assuming Note has a unique ID. If not, we might need a composite key or index. 
+        // UnifiedNote usually has 'id' (from DB or hash).
+        const id = note.id || `${note.bookTitle}-${note.createdAt}-${note.highlight?.slice(0, 10)}`;
+
+        if (newSelected.has(id)) {
+            newSelected.delete(id);
+        } else {
+            newSelected.add(id);
+        }
+        setSelectedNoteIds(newSelected);
+    };
+
+    const handleSelectAll = () => {
+        if (selectedNoteIds.size === displayedNotes.length) {
+            setSelectedNoteIds(new Set());
+        } else {
+            const allIds = new Set(displayedNotes.map(n => n.id || `${n.bookTitle}-${n.createdAt}-${n.highlight?.slice(0, 10)}`));
+            setSelectedNoteIds(allIds);
+        }
+    };
+
+    const handleExport = () => {
+        // Find notes ensuring we match IDs correctly
+        const selectedNotes = displayedNotes.filter(n => {
+            const id = n.id || `${n.bookTitle}-${n.createdAt}-${n.highlight?.slice(0, 10)}`;
+            return selectedNoteIds.has(id);
+        });
+
+        if (selectedNotes.length === 0) return;
+
+        openModal({
+            source: 'notes',
+            items: selectedNotes.map(n => ({
+                id: n.id || `${n.bookTitle}-${n.createdAt}`,
+                title: n.bookTitle, // Use book title as main title for note context
+                author: currentBook?.author, // We try to get author from book context
+                cover: undefined,
+                chapterTitle: n.chapter,
+                selection: n.highlight,
+                note: n.note,
+                date: new Date(n.createdAt).toISOString(),
+                originalContent: `${n.highlight}\n\n${n.note || ''}`
+            }))
+        });
+
+        setIsSelectionMode(false);
+        setSelectedNoteIds(new Set());
+    };
+
 
     // 未选中书籍时显示引导
     if (!selectedBookTitle) {
@@ -80,13 +151,40 @@ export function NotesPage() {
                             </div>
                         </div>
                     </div>
-                    <div className="flex gap-2 flex-shrink-0">
-                        <Input
-                            placeholder="搜索笔记..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-32 md:w-48 h-8 text-sm transition-all focus:w-64"
-                        />
+                    <div className="flex gap-2 flex-shrink-0 items-center">
+                        {/* Selection Controls */}
+                        {isSelectionMode ? (
+                            <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-4 duration-300 mr-2">
+                                <span className="text-sm font-medium text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-md">
+                                    {selectedNoteIds.size} / {displayedNotes.length}
+                                </span>
+                                <Button variant="outline" size="sm" onClick={handleSelectAll}>
+                                    {selectedNoteIds.size === displayedNotes.length ? "全不选" : "全选"}
+                                </Button>
+                                <Button variant="default" size="sm" onClick={handleExport} disabled={selectedNoteIds.size === 0} className="bg-indigo-600 hover:bg-indigo-700">
+                                    <Download className="w-4 h-4 mr-1" />
+                                    导出
+                                </Button>
+                                <Button variant="ghost" size="sm" onClick={toggleSelectionMode}>
+                                    <X className="w-4 h-4" />
+                                </Button>
+                            </div>
+                        ) : (
+                            <Button variant="outline" size="sm" onClick={toggleSelectionMode} className="gap-1 mr-2" disabled={displayedNotes.length === 0}>
+                                <CheckSquare className="w-4 h-4" />
+                                批量
+                            </Button>
+                        )}
+
+                        {!isSelectionMode && (
+                            <Input
+                                placeholder="搜索笔记..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-32 md:w-48 h-8 text-sm transition-all focus:w-64"
+                            />
+                        )}
+
                         <Button variant="ghost" size="sm" onClick={() => refresh()}>
                             ↻
                         </Button>
@@ -103,16 +201,21 @@ export function NotesPage() {
                                     <Skeleton className="h-24 w-full" />
                                     <Skeleton className="h-40 w-full" />
                                 </div>
-                            ) : filteredNotes.length === 0 ? (
+                            ) : displayedNotes.length === 0 ? (
                                 <div className="text-center py-20 text-gray-400">
-                                    <p>暂无笔记</p>
+                                    <p>{searchQuery ? "没有找到匹配的笔记" : "暂无笔记"}</p>
                                 </div>
                             ) : (
-                                filteredNotes
-                                    .filter(note => !searchQuery || note.highlight?.includes(searchQuery) || note.note?.includes(searchQuery))
-                                    .map((note) => (
-                                        <NoteCard key={note.id} note={note} showBookTitle={!selectedBookTitle} />
-                                    ))
+                                displayedNotes.map((note) => (
+                                    <NoteCard
+                                        key={note.id}
+                                        note={note}
+                                        showBookTitle={!selectedBookTitle}
+                                        selectionMode={isSelectionMode}
+                                        isSelected={selectedNoteIds.has(note.id || `${note.bookTitle}-${note.createdAt}-${note.highlight?.slice(0, 10)}`)}
+                                        onToggleSelect={toggleNoteSelection}
+                                    />
+                                ))
                             )}
                         </div>
                     </ScrollArea>

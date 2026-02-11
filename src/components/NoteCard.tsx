@@ -9,20 +9,32 @@ import {
     Quote,
     Clock,
     MapPin,
-    BookOpen
+    BookOpen,
+    CheckSquare
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface NoteCardProps {
     note: UnifiedNote;
     showBookTitle?: boolean;
+    selectionMode?: boolean;
+    isSelected?: boolean;
+    onToggleSelect?: (note: UnifiedNote) => void;
 }
 
-export function NoteCard({ note, showBookTitle }: NoteCardProps) {
+export function NoteCard({ note, showBookTitle, selectionMode, isSelected, onToggleSelect }: NoteCardProps) {
     const [isHovered, setIsHovered] = useState(false);
 
+    const handleCardClick = (e: React.MouseEvent) => {
+        if (selectionMode && onToggleSelect) {
+            e.stopPropagation();
+            onToggleSelect(note);
+        }
+    };
+
     // 复制内容到剪贴板
-    const handleCopy = async () => {
+    const handleCopy = async (e: React.MouseEvent) => {
+        e.stopPropagation();
         try {
             await navigator.clipboard.writeText(`${note.highlight}\n\n— ${note.bookTitle}`);
             // TODO: Show toast
@@ -33,10 +45,30 @@ export function NoteCard({ note, showBookTitle }: NoteCardProps) {
 
     return (
         <Card
-            className="group relative overflow-visible transition-all duration-300 hover:shadow-md border-transparent hover:border-gray-200 bg-white"
+            className={cn(
+                "group relative overflow-visible transition-all duration-300 border-transparent bg-white",
+                selectionMode ? "cursor-pointer hover:bg-gray-50 border-l-4" : "hover:shadow-md border-l-0 hover:border-gray-200",
+                isSelected ? "border-l-indigo-500 ring-2 ring-indigo-500/20 bg-indigo-50/10" : "border-l-transparent",
+                !selectionMode && "hover:border-l-0" // Reset if needed, but logic above handles it
+            )}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
+            onClick={handleCardClick}
         >
+            {/* Selection Checkbox */}
+            {selectionMode && (
+                <div className="absolute top-4 right-4 z-20">
+                    <div className={cn(
+                        "w-5 h-5 rounded border flex items-center justify-center transition-colors shadow-sm",
+                        isSelected
+                            ? "bg-indigo-600 border-indigo-600 text-white"
+                            : "border-gray-300 bg-white"
+                    )}>
+                        {isSelected && <CheckSquare size={14} />}
+                    </div>
+                </div>
+            )}
+
             {/* 装饰性引用符号 */}
             <div className="absolute top-4 left-4 text-gray-100 dark:text-gray-800 -z-0 select-none">
                 <Quote size={48} className="opacity-50" />
@@ -96,20 +128,22 @@ export function NoteCard({ note, showBookTitle }: NoteCardProps) {
                 </div>
             </div>
 
-            {/* 悬浮操作栏 */}
-            <div
-                className={cn(
-                    "absolute top-2 right-2 flex gap-1 transition-opacity duration-200",
-                    isHovered ? "opacity-100" : "opacity-0"
-                )}
-            >
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-indigo-600" onClick={handleCopy} title="复制文本">
-                    <Copy size={14} />
-                </Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-indigo-600" title="生成分享卡片">
-                    <Share2 size={14} />
-                </Button>
-            </div>
+            {/* 悬浮操作栏 - ONLY SHOW WHEN NOT IN SELECTION MODE */}
+            {!selectionMode && (
+                <div
+                    className={cn(
+                        "absolute top-2 right-2 flex gap-1 transition-opacity duration-200",
+                        isHovered ? "opacity-100" : "opacity-0"
+                    )}
+                >
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-indigo-600" onClick={handleCopy} title="复制文本">
+                        <Copy size={14} />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-indigo-600" title="生成分享卡片">
+                        <Share2 size={14} />
+                    </Button>
+                </div>
+            )}
 
             {/* 关联书名 (可选显示) */}
             {showBookTitle && (
