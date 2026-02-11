@@ -2,7 +2,7 @@ import { NavLink } from "react-router-dom";
 import { useConfig } from "../hooks/useConfig";
 import { useSidebar } from "../hooks/useSidebar";
 import { cn } from "@/lib/utils";
-import { Library, LayoutGrid, Settings, BookOpen, PanelLeftClose, PanelLeftOpen, Pin } from "lucide-react";
+import { Library, LayoutGrid, Settings, BookOpen, PanelLeftClose, Pin } from "lucide-react";
 import { ThemeToggle } from "./ThemeToggle";
 import { Button } from "./ui/button";
 
