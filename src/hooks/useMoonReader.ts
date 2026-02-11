@@ -8,7 +8,7 @@ import { useConfig } from './useConfig';
 import { useWebDavClient } from './useWebDavClient';
 import { listDirectory, readFile } from '../utils/webdav-client';
 import { parseWebDAVXml } from '../utils/webdav-parser';
-import { parseMoonReaderFile, parseBooksSync } from '../adapters/moon-reader';
+import { parseMoonReaderFile, parseBooksSync, type MoonBookMetadata } from '../adapters/moon-reader';
 import {
     needsUpdate,
     saveToCache,
@@ -73,7 +73,7 @@ export function useMoonReader() {
 
 
             // 2. 下载并解析 books.sync 获取书籍元数据
-            let metadataMap = new Map<string, any>();
+            let metadataMap = new Map<string, MoonBookMetadata>();
             try {
                 const booksSyncPath = `${moonConfig.syncPath.replace(/\/$/, '')}/.Moon+/books.sync`;
                 // console.debug(`[MoonReader] 下载 books.sync...`);

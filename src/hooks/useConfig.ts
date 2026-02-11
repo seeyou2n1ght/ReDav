@@ -4,7 +4,7 @@
  */
 
 import { useContext } from 'react';
-import { ConfigContext, type ConfigContextValue } from '../contexts/ConfigContext';
+import { ConfigContext, type ConfigContextValue } from '../contexts/ConfigContextDefinition';
 
 /**
  * 获取配置 Context

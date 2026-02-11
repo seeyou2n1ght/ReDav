@@ -10,6 +10,7 @@ import { createWebDAVClient, listDirectory, readFile } from '../utils/webdav-cli
 import { parseWebDAVXml } from '../utils/webdav-parser';
 import { getRegisteredAdapters } from '../adapters';
 import type { UnifiedNote, ReaderType, ReaderConfig, UnifiedBook, WebDAVItem } from '../types';
+import type { AxiosInstance } from 'axios';
 
 /**
  * 库数据接口
@@ -23,7 +24,7 @@ export interface LibraryData {
 }
 
 export function useLibrary(): LibraryData {
-    const { config: appConfig, isLoading: isConfigLoading } = useConfig();
+    const { config: appConfig } = useConfig();
 
     // 1. 获取所有启用的阅读器配置
     const enabledReaders = useMemo(() => {
@@ -40,49 +41,45 @@ export function useLibrary(): LibraryData {
                 }),
             }));
         return readers;
-    }, [appConfig, isConfigLoading]);
+    }, [appConfig]);
 
     // 2. 并行获取每个阅读器的目录列表
     const listQueries = useQueries({
         queries: enabledReaders.map(({ type, readerConfig, client }) => ({
             queryKey: ['library', 'ls', type, readerConfig.webdav.url, readerConfig.syncPath],
             queryFn: async () => {
-                try {
-                    let xml = await listDirectory(
-                        client,
-                        readerConfig.webdav.url,
-                        readerConfig.syncPath,
-                        appConfig?.proxy.url || ''
-                    );
+                let xml = await listDirectory(
+                    client,
+                    readerConfig.webdav.url,
+                    readerConfig.syncPath,
+                    appConfig?.proxy.url || ''
+                );
 
-                    let items = parseWebDAVXml(xml);
+                let items = parseWebDAVXml(xml);
 
-                    // AnxReader 特殊处理：如果根目录下没有 database7.db 但有 anx 目录，则深入查找
-                    if (type === 'anxReader' && !items.some(i => i.basename === 'database7.db')) {
-                        const anxDir = items.find(i => i.basename === 'anx' && i.type === 'directory');
-                        if (anxDir) {
-                            // 构造新的探测路径
-                            // WebDAV 路径通常是 href，我们需要基于 syncPath 确保路径更正确，
-                            // 但 listDirectory 使用的是相对于 webdav.url 的路径或绝对路径。
-                            // 简单起见，我们尝试使用 /anx 后缀
-                            const subPath = readerConfig.syncPath.endsWith('/')
-                                ? `${readerConfig.syncPath}anx`
-                                : `${readerConfig.syncPath}/anx`;
+                // AnxReader 特殊处理：如果根目录下没有 database7.db 但有 anx 目录，则深入查找
+                if (type === 'anxReader' && !items.some(i => i.basename === 'database7.db')) {
+                    const anxDir = items.find(i => i.basename === 'anx' && i.type === 'directory');
+                    if (anxDir) {
+                        // 构造新的探测路径
+                        // WebDAV 路径通常是 href，我们需要基于 syncPath 确保路径更正确，
+                        // 但 listDirectory 使用的是相对于 webdav.url 的路径或绝对路径。
+                        // 简单起见，我们尝试使用 /anx 后缀
+                        const subPath = readerConfig.syncPath.endsWith('/')
+                            ? `${readerConfig.syncPath}anx`
+                            : `${readerConfig.syncPath}/anx`;
 
-                            xml = await listDirectory(
-                                client,
-                                readerConfig.webdav.url,
-                                subPath,
-                                appConfig?.proxy.url || ''
-                            );
-                            items = parseWebDAVXml(xml);
-                        }
+                        xml = await listDirectory(
+                            client,
+                            readerConfig.webdav.url,
+                            subPath,
+                            appConfig?.proxy.url || ''
+                        );
+                        items = parseWebDAVXml(xml);
                     }
-
-                    return { type, readerConfig, items };
-                } catch (e) {
-                    throw e;
                 }
+
+                return { type, readerConfig, items };
             },
             staleTime: 60 * 1000, // 1分钟
             enabled: !!appConfig,
@@ -96,7 +93,7 @@ export function useLibrary(): LibraryData {
         const tasks: Array<{
             readerType: ReaderType;
             fileItem: WebDAVItem;
-            client: any; // AxiosInstance
+            client: AxiosInstance;
             proxyUrl: string;
             webdavUrl: string;
             syncPath: string;
@@ -172,7 +169,7 @@ export function useLibrary(): LibraryData {
                     }
 
                     return [] as UnifiedNote[];
-                } catch (error) {
+                } catch {
                     return [] as UnifiedNote[];
                 }
             },
@@ -200,7 +197,7 @@ export function useLibrary(): LibraryData {
             if (!booksMap.has(title)) {
                 booksMap.set(title, {
                     title,
-                    author: (note.rawData as any)?.author,
+                    author: (note.rawData as Record<string, unknown>)?.author as string | undefined,
                     noteCount: 0,
                     lastReading: note.createdAt,
                     sourceApps: []

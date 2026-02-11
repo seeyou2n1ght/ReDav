@@ -1,32 +1,12 @@
 /**
- * 配置管理 Context
+ * 配置管理 Context Provider
  * 提供全局配置状态和更新方法
  */
 
-import { createContext, useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import type { AppConfig } from '../types';
 import { loadConfig, saveConfig, clearConfig } from '../utils/config-storage';
-
-/**
- * Context 值类型定义
- */
-export interface ConfigContextValue {
-  /** 当前配置，未配置时为 null */
-  config: AppConfig | null;
-  /** 是否正在加载配置 */
-  isLoading: boolean;
-  /** 加载或操作过程中的错误 */
-  error: Error | null;
-  /** 更新配置（同步到状态和 IndexedDB） */
-  updateConfig: (config: AppConfig) => Promise<void>;
-  /** 清除配置 */
-  clearConfig: () => Promise<void>;
-}
-
-/**
- * ConfigContext 实例
- */
-export const ConfigContext = createContext<ConfigContextValue | undefined>(undefined);
+import { ConfigContext, type ConfigContextValue } from './ConfigContextDefinition';
 
 /**
  * ConfigProvider Props
