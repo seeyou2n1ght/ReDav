@@ -6,9 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, Trash2, Edit2, Check, Star, LayoutTemplate } from 'lucide-react';
-import { DEFAULT_TEMPLATES, EXPORT_VARIABLES, type ExportTemplate } from '@/types/export';
+import { Plus, Trash2, Edit2, Star, LayoutTemplate } from 'lucide-react';
+import { EXPORT_VARIABLES, type ExportTemplate } from '@/types/export';
 import { toast } from "sonner";
 import { cn } from '@/lib/utils';
 
