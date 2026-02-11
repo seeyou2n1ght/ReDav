@@ -1,24 +1,14 @@
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { ThemeToggle } from './ThemeToggle';
-import { useSidebar } from '../hooks/useSidebar';
-import { cn } from '@/lib/utils';
 
 export function Layout() {
-    const { isPinned, setHovered, isHovered } = useSidebar();
-    const isExpanded = isPinned || isHovered;
-
     return (
         <div className="flex h-screen bg-gray-50 dark:bg-background text-foreground transition-colors duration-300 overflow-hidden">
 
             {/* Desktop Sidebar (Hidden on Mobile) */}
             <aside
-                className={cn(
-                    "hidden lg:flex flex-col border-r bg-card z-20 shadow-sm relative transition-all duration-300 ease-in-out",
-                    isExpanded ? "w-56" : "w-[68px]"
-                )}
-                onMouseEnter={() => !isPinned && setHovered(true)}
-                onMouseLeave={() => setHovered(false)}
+                className="hidden lg:flex w-[72px] flex-col border-r bg-card z-20 shadow-sm relative transition-all duration-300 ease-in-out"
             >
                 <div className="absolute inset-0 overflow-hidden">
                     <Sidebar className="w-full h-full" />
