@@ -22,11 +22,8 @@ export interface WebDAVConnectionConfig {
  * @returns 配置好的 axios 实例
  */
 export function useWebDavClient(config: WebDAVConnectionConfig) {
-    return useMemo(() => createWebDAVClient(config), [
-        config.webdav.url,
-        config.webdav.username,
-        config.webdav.password,
-        config.proxy.url,
-        config.proxy.token,
-    ]);
+    const client = useMemo(() => {
+        return createWebDAVClient(config);
+    }, [config]);
+    return client;
 }

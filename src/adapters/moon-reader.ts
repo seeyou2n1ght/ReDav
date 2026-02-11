@@ -48,13 +48,13 @@ export function decodeAnFile(buffer: ArrayBuffer): string {
 
   try {
     return pako.inflateRaw(uint8Array, { to: 'string' });
-  } catch (e1) {
+  } catch {
     try {
       return pako.inflate(uint8Array, { to: 'string' });
-    } catch (e2) {
+    } catch {
       try {
         return pako.ungzip(uint8Array, { to: 'string' });
-      } catch (e3) {
+      } catch {
         // 如果都不是，尝试作为纯文本读取
         return new TextDecoder("utf-8").decode(buffer);
       }
@@ -83,7 +83,7 @@ export function parseMoonReaderContent(text: string): UnifiedNote[] {
   }
 
   for (let i = 1; i < sections.length; i++) {
-    let section = sections[i].trim();
+    const section = sections[i].trim();
     if (!section) continue;
 
     const lines = section.split(/\n/).map(l => l.trimEnd());

@@ -46,12 +46,11 @@ export interface AnxReaderResult {
  * @returns 书籍列表和笔记列表
  */
 export async function parseAnxDatabase(buffer: ArrayBuffer): Promise<AnxReaderResult> {
-  try {
-    const db = await loadDatabase(buffer);
+  const db = await loadDatabase(buffer);
 
-    try {
-      // 查询所有笔记（与 Python 脚本一致）
-      const sql = `
+  try {
+    // 查询所有笔记（与 Python 脚本一致）
+    const sql = `
         SELECT 
           b.id as book_id,
           b.title,
@@ -64,47 +63,45 @@ export async function parseAnxDatabase(buffer: ArrayBuffer): Promise<AnxReaderRe
         ORDER BY b.title, n.create_time, n.id
       `;
 
-      const rawNotes = executeQuery<AnxRawNote>(db, sql);
+    const rawNotes = executeQuery<AnxRawNote>(db, sql);
 
-      // 转换为统一笔记格式
-      const notes: UnifiedNote[] = rawNotes.map((raw, index) => ({
-        id: `anx-${raw.book_id}-${index}-${raw.create_time || Date.now()}`,
-        bookTitle: raw.title || '未知书籍',
-        chapter: raw.chapter || undefined,
-        highlight: raw.content || '',
-        note: raw.reader_note || undefined,
-        createdAt: raw.create_time ? new Date(raw.create_time) : new Date(),
-        sourceApp: 'AnxReader',
-        rawData: raw,
-      }));
+    // 转换为统一笔记格式
+    const notes: UnifiedNote[] = rawNotes.map((raw, index) => ({
+      id: `anx-${raw.book_id}-${index}-${raw.create_time || Date.now()}`,
+      bookTitle: raw.title || '未知书籍',
+      chapter: raw.chapter || undefined,
+      highlight: raw.content || '',
+      note: raw.reader_note || undefined,
+      createdAt: raw.create_time ? new Date(raw.create_time) : new Date(),
+      sourceApp: 'AnxReader',
+      rawData: raw,
+    }));
 
-      // 统计书籍信息
-      const bookMap = new Map<number, AnxBook>();
-      for (const raw of rawNotes) {
-        const existing = bookMap.get(raw.book_id);
-        if (existing) {
-          existing.noteCount++;
-        } else {
-          bookMap.set(raw.book_id, {
-            id: raw.book_id,
-            title: raw.title || '未知书籍',
-            noteCount: 1,
-          });
-        }
+    // 统计书籍信息
+    const bookMap = new Map<number, AnxBook>();
+    for (const raw of rawNotes) {
+      const existing = bookMap.get(raw.book_id);
+      if (existing) {
+        existing.noteCount++;
+      } else {
+        bookMap.set(raw.book_id, {
+          id: raw.book_id,
+          title: raw.title || '未知书籍',
+          noteCount: 1,
+        });
       }
-
-      return {
-        books: Array.from(bookMap.values()),
-        notes,
-      };
-    } finally {
-      // 确保关闭数据库连接
-      closeDatabase(db);
     }
-  } catch (error) {
-    throw error;
+
+    return {
+      books: Array.from(bookMap.values()),
+      notes,
+    };
+  } finally {
+    // 确保关闭数据库连接
+    closeDatabase(db);
   }
 }
+
 
 /**
  * 按书籍分组笔记

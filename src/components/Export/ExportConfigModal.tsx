@@ -5,25 +5,34 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Copy, Download, FileText, LayoutTemplate, RefreshCw } from 'lucide-react';
+import { Copy, Download, FileText, LayoutTemplate, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
 import { useExportStore } from '@/hooks/useExportStore';
 import { EXPORT_VARIABLES } from '@/types/export';
 import type { ExportItem } from '@/types/export';
 import { toast } from "sonner";
 import { cn } from '@/lib/utils';
 
-// --- Template Engine Utility ---
+// --- 模板引擎 ---
+// 模板变量 → ExportItem 字段的映射
+// 解决 EXPORT_VARIABLES 的 key 与 ExportItem 属性名不一致的问题
+const VARIABLE_TO_FIELD: Record<string, keyof ExportItem> = {
+    bookTitle: 'title',
+    author: 'author',
+    chapterTitle: 'chapterTitle',
+    selection: 'selection',
+    note: 'note',
+    date: 'date',
+    style: 'style',
+};
+
 const compileTemplate = (template: string, item: ExportItem): string => {
     let result = template;
-
-    // Replace standard variables
-    // Simple regex for {{variable}}
     EXPORT_VARIABLES.forEach(v => {
         const regex = new RegExp(`{{${v.key}}}`, 'g');
-        const value = item[v.key as keyof ExportItem] || '';
+        const fieldKey = VARIABLE_TO_FIELD[v.key] || (v.key as keyof ExportItem);
+        const value = item[fieldKey] || '';
         result = result.replace(regex, String(value));
     });
-
     return result;
 };
 
@@ -41,26 +50,37 @@ export function ExportConfigModal() {
     } = useExportStore();
 
     const activeTemplate = getActiveTemplate();
-    const [previewContent, setPreviewContent] = useState('');
     const [localTemplateContent, setLocalTemplateContent] = useState('');
+    // 全量预览 vs 单条预览
+    const [showFullPreview, setShowFullPreview] = useState(false);
 
-    // Initialize active template content when opened or switched
+    // 初始化编辑器内容
     useEffect(() => {
         if (isOpen && activeTemplate) {
             setLocalTemplateContent(activeTemplate.content);
+            setShowFullPreview(false);
         }
-    }, [isOpen, activeTemplate.id]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen, activeTemplate?.id]);
 
-    // Live Preview Logic
-    const previewItem = useMemo(() => context?.items[0], [context]);
+    // 编译预览内容
+    const previewItems = useMemo(() => {
+        if (!context?.items.length || !localTemplateContent) return [];
+        return context.items.map(item => compileTemplate(localTemplateContent, item));
+    }, [localTemplateContent, context]);
 
-    useEffect(() => {
-        if (previewItem && localTemplateContent) {
-            setPreviewContent(compileTemplate(localTemplateContent, previewItem));
-        } else if (!previewItem) {
-            setPreviewContent("No items selected for preview.");
+    const previewContent = useMemo(() => {
+        if (previewItems.length === 0) return '暂无可预览内容';
+        if (showFullPreview) {
+            return previewItems.join('\n\n---\n\n');
         }
-    }, [localTemplateContent, previewItem]);
+        return previewItems[0];
+    }, [previewItems, showFullPreview]);
+
+    // 全文导出内容（无分隔符）
+    const fullExportText = useMemo(() => {
+        return previewItems.join('\n\n');
+    }, [previewItems]);
 
     // Handlers
     const handleTemplateChange = (val: string) => {
@@ -93,26 +113,28 @@ export function ExportConfigModal() {
         }
     };
 
+    // 复制后自动关闭
     const handleCopy = async () => {
-        if (!context?.items.length) return;
+        if (!fullExportText) return;
 
-        const fullText = context.items.map(item => compileTemplate(localTemplateContent, item)).join('\n\n');
         try {
-            await navigator.clipboard.writeText(fullText);
+            await navigator.clipboard.writeText(fullExportText);
             toast.success("已复制到剪贴板！", {
-                description: `共 ${context.items.length} 条笔记`,
+                description: `共 ${context?.items.length} 条，${fullExportText.length} 字符`,
             });
+            // 延迟关闭 Modal
+            setTimeout(() => closeModal(), 600);
         } catch (err) {
-            console.error('Failed to copy keys', err);
+            console.error('Failed to copy:', err);
             toast.error("复制失败");
         }
     };
 
+    // 下载后自动关闭
     const handleDownload = () => {
-        if (!context?.items.length) return;
+        if (!fullExportText) return;
 
-        const fullText = context.items.map(item => compileTemplate(localTemplateContent, item)).join('\n\n');
-        const blob = new Blob([fullText], { type: 'text/plain;charset=utf-8' });
+        const blob = new Blob([fullExportText], { type: 'text/plain;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
@@ -120,9 +142,12 @@ export function ExportConfigModal() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        URL.revokeObjectURL(url);
         toast.success("文件已开始下载", {
             description: `export_${new Date().toISOString().slice(0, 10)}.${activeTemplate.extension}`,
         });
+        // 延迟关闭 Modal
+        setTimeout(() => closeModal(), 600);
     };
 
     if (!isOpen) return null;
@@ -131,20 +156,23 @@ export function ExportConfigModal() {
         <Dialog open={isOpen} onOpenChange={(open) => !open && closeModal()}>
             <DialogContent className={cn(
                 "flex flex-col p-0 gap-0 overflow-hidden bg-background transition-all duration-300",
-                showConfigInModal ? "max-w-5xl h-[80vh]" : "max-w-3xl h-[60vh]"
+                showConfigInModal ? "max-w-5xl h-[80vh]" : "max-w-3xl h-[65vh]"
             )}>
-                <DialogHeader className="p-6 border-b flex-shrink-0 flex flex-row items-center justify-between">
+                <DialogHeader className="p-6 pb-4 border-b flex-shrink-0 flex flex-row items-center justify-between">
                     <DialogTitle className="flex items-center gap-2">
-                        <FileText className="w-5 h-5 text-indigo-600" />
-                        个性化导出 ({context?.items.length} 项)
+                        <FileText className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                        个性化导出
+                        <Badge variant="secondary" className="ml-1 text-xs font-normal">
+                            {context?.items.length} 项
+                        </Badge>
                     </DialogTitle>
 
-                    {/* Template Selector in Header for quick access */}
+                    {/* 精简模式下的快速模板选择 */}
                     {!showConfigInModal && (
                         <div className="flex items-center gap-2 mr-8">
                             <Select value={activeTemplate.id} onValueChange={handleTemplateChange}>
-                                <SelectTrigger className="w-[200px] h-8 text-xs">
-                                    <SelectValue placeholder="Select a template" />
+                                <SelectTrigger className="w-[180px] h-8 text-xs">
+                                    <SelectValue placeholder="选择模板" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {savedTemplates.map(t => (
@@ -152,7 +180,7 @@ export function ExportConfigModal() {
                                     ))}
                                 </SelectContent>
                             </Select>
-                            <Button variant="ghost" size="sm" onClick={() => toggleShowConfig(true)} className="h-8 text-xs text-indigo-600">
+                            <Button variant="ghost" size="sm" onClick={() => toggleShowConfig(true)} className="h-8 text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-700">
                                 编辑模板
                             </Button>
                         </div>
@@ -160,23 +188,23 @@ export function ExportConfigModal() {
                 </DialogHeader>
 
                 <div className="flex-1 flex overflow-hidden">
-                    {/* Left Panel: Configuration (Conditional) */}
+                    {/* 左面板：模板编辑器（条件渲染） */}
                     {showConfigInModal && (
-                        <div className="w-1/2 p-6 border-r flex flex-col gap-6 overflow-y-auto bg-gray-50/50 dark:bg-card/50 transition-all">
-                            {/* Template Selector */}
+                        <div className="w-1/2 p-6 border-r flex flex-col gap-4 overflow-y-auto bg-muted/20 dark:bg-muted/5 transition-all">
+                            {/* 模板选择器 */}
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-muted-foreground flex items-center justify-between">
                                     <span className="flex items-center gap-2">
                                         <LayoutTemplate className="w-4 h-4" />
                                         导出模板
                                     </span>
-                                    <Button variant="ghost" size="sm" onClick={() => toggleShowConfig(false)} className="h-6 text-xs text-muted-foreground hover:text-indigo-600 px-2">
+                                    <Button variant="ghost" size="sm" onClick={() => toggleShowConfig(false)} className="h-6 text-xs text-muted-foreground hover:text-indigo-600 dark:hover:text-indigo-400 px-2">
                                         收起配置
                                     </Button>
                                 </label>
                                 <Select value={activeTemplate.id} onValueChange={handleTemplateChange}>
                                     <SelectTrigger className="w-full bg-background">
-                                        <SelectValue placeholder="Select a template" />
+                                        <SelectValue placeholder="选择模板" />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {savedTemplates.map(t => (
@@ -186,8 +214,8 @@ export function ExportConfigModal() {
                                 </Select>
                             </div>
 
-                            {/* Editor */}
-                            <div className="flex-1 flex flex-col gap-2 min-h-[300px]">
+                            {/* 编辑器 */}
+                            <div className="flex-1 flex flex-col gap-2 min-h-[250px]">
                                 <div className="flex items-center justify-between">
                                     <label className="text-sm font-medium text-muted-foreground">模板编辑器</label>
                                     <span className="text-xs text-muted-foreground">支持 Markdown 语法</span>
@@ -197,11 +225,11 @@ export function ExportConfigModal() {
                                     value={localTemplateContent}
                                     onChange={handleContentChange}
                                     className="flex-1 font-mono text-sm bg-background resize-none p-4 leading-relaxed"
-                                    placeholder="Design your template here..."
+                                    placeholder="在此设计你的模板..."
                                 />
                             </div>
 
-                            {/* Variables */}
+                            {/* 可用变量 */}
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-muted-foreground">可用变量 (点击插入)</label>
                                 <div className="flex flex-wrap gap-2">
@@ -209,7 +237,7 @@ export function ExportConfigModal() {
                                         <Badge
                                             key={v.key}
                                             variant="outline"
-                                            className="cursor-pointer hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 transition-colors"
+                                            className="cursor-pointer hover:bg-indigo-50 dark:hover:bg-indigo-950/30 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-200 dark:hover:border-indigo-800 transition-colors"
                                             onClick={() => insertVariable(v.key)}
                                             title={v.description}
                                         >
@@ -221,41 +249,64 @@ export function ExportConfigModal() {
                         </div>
                     )}
 
-                    {/* Right Panel: Live Preview */}
+                    {/* 右面板：实时预览 */}
                     <div className={cn(
                         "flex flex-col bg-background transition-all duration-300",
                         showConfigInModal ? "w-1/2" : "w-full"
                     )}>
-                        <div className="p-4 border-b bg-gray-50/30 dark:bg-muted/10 flex items-center justify-between">
+                        <div className="px-4 py-3 border-b bg-muted/10 flex items-center justify-between">
                             <span className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
                                 <RefreshCw className="w-3 h-3" />
-                                实时预览 (第 1 项)
+                                实时预览
                             </span>
-                            <Badge variant="secondary" className="font-mono text-xs">
-                                {activeTemplate.extension}
-                            </Badge>
+                            <div className="flex items-center gap-2">
+                                {/* 全量预览切换 */}
+                                {(context?.items.length ?? 0) > 1 && (
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-7 text-xs gap-1"
+                                        onClick={() => setShowFullPreview(!showFullPreview)}
+                                    >
+                                        {showFullPreview ? (
+                                            <>
+                                                <ChevronUp className="w-3 h-3" />
+                                                仅首条
+                                            </>
+                                        ) : (
+                                            <>
+                                                <ChevronDown className="w-3 h-3" />
+                                                全部 ({context?.items.length})
+                                            </>
+                                        )}
+                                    </Button>
+                                )}
+                                <Badge variant="secondary" className="font-mono text-xs">
+                                    {activeTemplate.extension}
+                                </Badge>
+                            </div>
                         </div>
                         <ScrollArea className="flex-1 p-6">
-                            <div className="prose dark:prose-invert max-w-none text-sm whitespace-pre-wrap font-mono">
+                            <div className="prose dark:prose-invert max-w-none text-sm whitespace-pre-wrap font-mono leading-relaxed">
                                 {previewContent}
                             </div>
                         </ScrollArea>
                     </div>
                 </div>
 
-                <DialogFooter className="p-4 border-t bg-gray-50/30 dark:bg-muted/10">
+                <DialogFooter className="p-4 border-t bg-muted/10">
                     <div className="flex items-center justify-between w-full">
-                        <div className="flex items-center gap-2">
-                            {/* "Use directly" checkbox - implies toggling showConfigInModal to FALSE for next time if currently TRUE 
-                                Actually, user wants to "check to use directly without prompt". 
-                                Does this mean we should start with showConfig=false next time?
-                                Yes, that's what persistence effectively does if we toggle it here.
-                            */}
+                        <div className="flex items-center gap-3">
+                            {/* 内容统计 */}
+                            <span className="text-xs text-muted-foreground">
+                                {fullExportText.length.toLocaleString()} 字符
+                            </span>
+                            {/* "下次直接使用" 选项 */}
                             {showConfigInModal && (
-                                <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer hover:text-foreground">
+                                <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
                                     <input
                                         type="checkbox"
-                                        className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                        className="rounded border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500"
                                         onChange={(e) => {
                                             if (e.target.checked) {
                                                 toggleShowConfig(false);

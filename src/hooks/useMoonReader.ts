@@ -49,7 +49,7 @@ export function useMoonReader() {
                 throw new Error('MoonReader 未配置');
             }
 
-            console.log('[MoonReader] 开始同步...');
+
 
             // 1. 列出 Cache 目录下的文件
             let targetPath = moonConfig.syncPath;
@@ -57,7 +57,7 @@ export function useMoonReader() {
                 targetPath = `${targetPath.replace(/\/$/, '')}${CACHE_DIR}`;
             }
 
-            console.log(`[MoonReader] 列出目录: ${targetPath}`);
+
             const xml = await listDirectory(
                 client,
                 moonConfig.webdav.url,
@@ -70,13 +70,13 @@ export function useMoonReader() {
                 // 按修改时间倒序排列，优先同步最近的书
                 .sort((a, b) => new Date(b.lastmod).getTime() - new Date(a.lastmod).getTime());
 
-            console.log(`[MoonReader] 发现 ${files.length} 个 .an 文件`);
+
 
             // 2. 下载并解析 books.sync 获取书籍元数据
             let metadataMap = new Map<string, any>();
             try {
                 const booksSyncPath = `${moonConfig.syncPath.replace(/\/$/, '')}/.Moon+/books.sync`;
-                console.log(`[MoonReader] 下载 books.sync...`);
+                // console.debug(`[MoonReader] 下载 books.sync...`);
                 const booksSyncBuffer = await readFile<ArrayBuffer>(
                     client,
                     moonConfig.webdav.url,
@@ -85,7 +85,7 @@ export function useMoonReader() {
                     { responseType: 'arraybuffer' }
                 );
                 metadataMap = parseBooksSync(booksSyncBuffer);
-                console.log(`[MoonReader] 解析到 ${metadataMap.size} 本书籍元数据`);
+                // console.debug(`[MoonReader] 解析到 ${metadataMap.size} 本书籍元数据`);
             } catch (e) {
                 console.warn(`[MoonReader] books.sync 下载失败，将使用文件名作为书名:`, e);
             }
@@ -112,7 +112,7 @@ export function useMoonReader() {
                 processedFiles.add(file.filename);
             }
 
-            console.log(`[MoonReader] 需要更新 ${updateQueue.length} 个文件`);
+            // console.debug(`[MoonReader] 需要更新 ${updateQueue.length} 个文件`);
 
             // 3. 并行下载更新（限制并发数）
             const CONCURRENCY = 5;
@@ -120,7 +120,7 @@ export function useMoonReader() {
                 const chunk = updateQueue.slice(i, i + CONCURRENCY);
                 await Promise.all(chunk.map(async (file) => {
                     try {
-                        console.log(`[MoonReader] 下载: ${file.filename}`);
+                        // console.debug(`[MoonReader] 下载: ${file.filename}`);
                         const buffer = await readFile<ArrayBuffer>(
                             client,
                             moonConfig.webdav.url,

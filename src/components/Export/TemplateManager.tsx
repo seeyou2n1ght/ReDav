@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { useExportStore } from '@/hooks/useExportStore';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Trash2, Edit2, Star, LayoutTemplate } from 'lucide-react';
+import { Plus, Trash2, Edit2, Star } from 'lucide-react';
 import { EXPORT_VARIABLES, type ExportTemplate } from '@/types/export';
 import { toast } from "sonner";
 import { cn } from '@/lib/utils';
@@ -28,7 +27,7 @@ export function TemplateManager() {
     const handleCreate = () => {
         const newTemplate: ExportTemplate = {
             id: crypto.randomUUID(),
-            name: 'New Template',
+            name: '新模板',
             content: '{{highlight}}\n\n-- {{bookTitle}}',
             extension: 'txt',
             isDefault: false
@@ -43,14 +42,8 @@ export function TemplateManager() {
         if (!editingTemplate) return;
 
         if (savedTemplates.some(t => t.id === editingTemplate.id)) {
-            // Update
             updateTemplate(editingTemplate.id, tempContent);
-            // Also need way to update Name if store supports it? 
-            // My store `updateTemplate` only takes content. I should check store.
-            // If store doesn't support name update, I might need to extend it or just re-add.
-            // Let's assume for now I can only update content or I need to update store.
         } else {
-            // Create
             addTemplate({ ...editingTemplate, name: tempName, content: tempContent });
         }
         setIsDialogOpen(false);
@@ -64,49 +57,49 @@ export function TemplateManager() {
     };
 
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                    <LayoutTemplate className="w-5 h-5 text-indigo-600" />
-                    个性化导出模板
-                </CardTitle>
-                <CardDescription>
-                    管理您的导出模板。点击星星图标设置默认模板。
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <div className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <>
+            {/* 与 ConfigForm 视觉一致的卡片容器 */}
+            <div className="bg-white dark:bg-card rounded-2xl shadow-sm p-6 sm:p-8 border dark:border-border">
+                <div className="space-y-5">
+                    {/* 模板列表 */}
+                    <div className="grid grid-cols-1 gap-3">
                         {savedTemplates.map(template => (
                             <div
                                 key={template.id}
                                 className={cn(
-                                    "flex items-center justify-between p-4 rounded-lg border transition-all",
-                                    currentTemplateId === template.id ? "border-indigo-500 bg-indigo-50/10 shadow-sm" : "hover:border-indigo-200"
+                                    "flex items-center justify-between p-4 rounded-xl border transition-all duration-200",
+                                    currentTemplateId === template.id
+                                        ? "border-indigo-500 dark:border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/20 shadow-sm"
+                                        : "border-border hover:border-indigo-200 dark:hover:border-indigo-800 hover:bg-muted/30"
                                 )}
                             >
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-3 min-w-0">
                                     <Button
                                         variant="ghost"
                                         size="icon"
-                                        className={cn("h-8 w-8", currentTemplateId === template.id ? "text-yellow-500" : "text-gray-300 hover:text-yellow-500")}
+                                        className={cn(
+                                            "h-8 w-8 flex-shrink-0",
+                                            currentTemplateId === template.id
+                                                ? "text-yellow-500"
+                                                : "text-muted-foreground/40 hover:text-yellow-500"
+                                        )}
                                         onClick={() => setCurrentTemplateId(template.id)}
                                         title={currentTemplateId === template.id ? "当前默认模板" : "设为默认"}
                                     >
                                         <Star fill={currentTemplateId === template.id ? "currentColor" : "none"} size={16} />
                                     </Button>
-                                    <div>
-                                        <div className="font-medium flex items-center gap-2">
-                                            {template.name}
-                                            <Badge variant="secondary" className="text-[10px] h-4">{template.extension}</Badge>
+                                    <div className="min-w-0">
+                                        <div className="font-medium flex items-center gap-2 text-foreground">
+                                            <span className="truncate">{template.name}</span>
+                                            <Badge variant="secondary" className="text-[10px] h-4 flex-shrink-0">{template.extension}</Badge>
                                         </div>
-                                        <div className="text-xs text-muted-foreground line-clamp-1">
-                                            {template.content.slice(0, 30)}...
+                                        <div className="text-xs text-muted-foreground line-clamp-1 mt-0.5 font-mono">
+                                            {template.content.slice(0, 40)}...
                                         </div>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-1">
-                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(template)}>
+                                <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => handleEdit(template)}>
                                         <Edit2 size={14} />
                                     </Button>
                                     {!template.isDefault && (
@@ -117,32 +110,44 @@ export function TemplateManager() {
                                 </div>
                             </div>
                         ))}
-                        <Button variant="outline" className="h-auto py-8 border-dashed flex flex-col gap-2 hover:border-indigo-500 hover:text-indigo-600" onClick={handleCreate}>
-                            <Plus size={24} />
-                            <span>新建模板</span>
-                        </Button>
                     </div>
-                </div>
-            </CardContent>
 
+                    {/* 新建模板按钮 */}
+                    <Button
+                        variant="outline"
+                        className="w-full h-auto py-6 border-dashed border-2 flex flex-col gap-2 hover:border-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400 dark:hover:border-indigo-600 transition-colors"
+                        onClick={handleCreate}
+                    >
+                        <Plus size={20} />
+                        <span className="text-sm">新建模板</span>
+                    </Button>
+
+                    {/* 使用提示 */}
+                    <p className="text-center text-xs text-muted-foreground">
+                        在导出笔记时，⭐ 标记的模板将作为默认模板
+                    </p>
+                </div>
+            </div>
+
+            {/* 编辑对话框 */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="max-w-2xl bg-white">
+                <DialogContent className="max-w-2xl bg-background">
                     <DialogHeader>
-                        <DialogTitle>编辑模板</DialogTitle>
+                        <DialogTitle className="text-foreground">编辑模板</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">模板名称</label>
-                            <Input value={tempName} onChange={e => setTempName(e.target.value)} placeholder="Template Name" />
+                            <label className="text-sm font-medium text-foreground">模板名称</label>
+                            <Input value={tempName} onChange={e => setTempName(e.target.value)} placeholder="输入模板名称" />
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">模板内容</label>
+                            <label className="text-sm font-medium text-foreground">模板内容</label>
                             <div className="flex gap-2 mb-2 flex-wrap">
                                 {EXPORT_VARIABLES.map(v => (
                                     <Badge
                                         key={v.key}
                                         variant="outline"
-                                        className="cursor-pointer hover:bg-indigo-50"
+                                        className="cursor-pointer hover:bg-indigo-50 dark:hover:bg-indigo-950/30 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
                                         onClick={() => setTempContent(prev => prev + `{{${v.key}}}`)}
                                     >
                                         {`{{${v.key}}}`}
@@ -153,15 +158,16 @@ export function TemplateManager() {
                                 value={tempContent}
                                 onChange={e => setTempContent(e.target.value)}
                                 className="font-mono min-h-[200px]"
+                                placeholder="在此编写模板内容..."
                             />
                         </div>
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsDialogOpen(false)}>取消</Button>
-                        <Button onClick={handleSave}>保存</Button>
+                        <Button onClick={handleSave} className="bg-indigo-600 hover:bg-indigo-700">保存</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </Card>
+        </>
     );
 }

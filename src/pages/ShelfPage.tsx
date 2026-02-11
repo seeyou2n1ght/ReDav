@@ -1,9 +1,11 @@
 /**
  * 书架页
  * 展示书籍列表，使用 shadcn/ui 组件
+ * 适配 Dark Mode，筛选栏只显示已有数据的阅读器
  */
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useLibrary } from '../hooks/useLibrary';
@@ -14,6 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BookCard } from '@/components/BookCard';
+import { BookCover } from '@/components/ui/cover-generator';
 import { LayoutGrid, List, CheckSquare, Download, X } from 'lucide-react';
 
 export function ShelfPage() {
@@ -22,6 +25,7 @@ export function ShelfPage() {
     const { openModal } = useExportStore();
 
     const [searchQuery, setSearchQuery] = useState('');
+    const debouncedSearch = useDebouncedValue(searchQuery, 250);
     const [activeFilter, setActiveFilter] = useState<'all' | ReaderType>('all');
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
@@ -29,28 +33,37 @@ export function ShelfPage() {
     const [isSelectionMode, setIsSelectionMode] = useState(false);
     const [selectedBookIds, setSelectedBookIds] = useState<Set<string>>(new Set());
 
-    // 过滤书籍
-    const filteredBooks = books.filter(book => {
-        const matchesSearch = book.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            book.author?.toLowerCase().includes(searchQuery.toLowerCase());
+    // 只显示有数据的阅读器类型，避免展示未完成的适配器
+    const activeReaderTypes = useMemo(() => {
+        const types = new Set<string>();
+        books.forEach(book => {
+            book.sourceApps.forEach(app => types.add(app));
+        });
+        // 映射 sourceApp 名称回 ReaderType
+        return (Object.entries(READER_DEFAULTS) as [ReaderType, typeof READER_DEFAULTS[ReaderType]][])
+            .filter(([, meta]) => types.has(meta.name) || types.has(meta.name.split(' ')[0]));
+    }, [books]);
+
+    // 过滤书籍（使用 debounced 搜索词减少重计算）
+    const filteredBooks = useMemo(() => books.filter(book => {
+        const q = debouncedSearch.toLowerCase();
+        const matchesSearch = !q || book.title.toLowerCase().includes(q) ||
+            book.author?.toLowerCase().includes(q);
         const matchesFilter = activeFilter === 'all' ||
             book.sourceApps.some(app => app.toLowerCase().includes(activeFilter.toLowerCase()) ||
                 (activeFilter === 'anxReader' && app === 'AnxReader') ||
                 (activeFilter === 'moonReader' && app === 'MoonReader'));
 
         return matchesSearch && matchesFilter;
-    });
+    }), [books, debouncedSearch, activeFilter]);
 
     const toggleSelectionMode = () => {
         setIsSelectionMode(!isSelectionMode);
-        setSelectedBookIds(new Set()); // Clear selection on toggle
+        setSelectedBookIds(new Set());
     };
 
     const toggleBookSelection = (book: UnifiedBook) => {
         const newSelected = new Set(selectedBookIds);
-        // We use title as ID for now since UnifiedBook might not have a unique stable ID across syncs, 
-        // but typically 'id' or 'isbn' is better. Using title for MVP as per existing code patterns.
-        // Wait, UnifiedBook interface usually has an ID? Let's assume title is unique enough for now or use implicit index.
         const id = book.title;
 
         if (newSelected.has(id)) {
@@ -71,7 +84,7 @@ export function ShelfPage() {
                 id: b.title,
                 title: b.title,
                 author: b.author,
-                cover: undefined, // Could pass cover URL if available
+                cover: undefined,
                 date: b.lastReading ? new Date(b.lastReading).toISOString() : undefined,
                 note: `Books from ${b.sourceApps.join(', ')}`,
                 originalContent: `Exported from ReDav Shelf`
@@ -107,7 +120,7 @@ export function ShelfPage() {
             {/* 顶部栏 */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-gray-900">书架</h1>
+                    <h1 className="text-3xl font-bold tracking-tight text-foreground">书架</h1>
                     <p className="text-muted-foreground mt-1">
                         共 {books.length} 本书，{filteredBooks.length} 结果
                     </p>
@@ -117,7 +130,7 @@ export function ShelfPage() {
                     {/* Selection Actions */}
                     {isSelectionMode ? (
                         <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-4 duration-300">
-                            <span className="text-sm font-medium text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-md">
+                            <span className="text-sm font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 px-3 py-1.5 rounded-md">
                                 已选 {selectedBookIds.size} 本
                             </span>
                             <Button variant="default" size="sm" onClick={handleExport} disabled={selectedBookIds.size === 0} className="bg-indigo-600 hover:bg-indigo-700">
@@ -136,11 +149,11 @@ export function ShelfPage() {
                         </Button>
                     )}
 
-                    <div className="bg-gray-100 p-1 rounded-lg flex items-center gap-1 mx-2">
+                    <div className="bg-gray-100 dark:bg-muted p-1 rounded-lg flex items-center gap-1 mx-2">
                         <Button
                             variant={viewMode === 'grid' ? 'default' : 'ghost'}
                             size="icon"
-                            className={cn("h-7 w-7", viewMode === 'grid' && "bg-white text-black shadow-sm hover:bg-white/90")}
+                            className={cn("h-7 w-7", viewMode === 'grid' && "bg-white dark:bg-card text-foreground shadow-sm hover:bg-white/90 dark:hover:bg-card/90")}
                             onClick={() => setViewMode('grid')}
                             title="网格视图"
                         >
@@ -149,7 +162,7 @@ export function ShelfPage() {
                         <Button
                             variant={viewMode === 'list' ? 'default' : 'ghost'}
                             size="icon"
-                            className={cn("h-7 w-7", viewMode === 'list' && "bg-white text-black shadow-sm hover:bg-white/90")}
+                            className={cn("h-7 w-7", viewMode === 'list' && "bg-white dark:bg-card text-foreground shadow-sm hover:bg-white/90 dark:hover:bg-card/90")}
                             onClick={() => setViewMode('list')}
                             title="列表视图"
                         >
@@ -168,7 +181,7 @@ export function ShelfPage() {
             )}
 
             {/* 筛选与搜索 */}
-            <div className="flex flex-col sm:flex-row gap-4 items-center bg-white p-4 rounded-xl shadow-sm border">
+            <div className="flex flex-col sm:flex-row gap-4 items-center bg-white dark:bg-card p-4 rounded-xl shadow-sm border dark:border-border transition-colors">
                 <Input
                     placeholder="搜索书名或作者..."
                     value={searchQuery}
@@ -183,12 +196,12 @@ export function ShelfPage() {
                     >
                         全部
                     </Button>
-                    {Object.entries(READER_DEFAULTS).map(([type, meta]) => (
+                    {activeReaderTypes.map(([type, meta]) => (
                         <Button
                             key={type}
                             variant={activeFilter === type ? 'default' : 'ghost'}
                             size="sm"
-                            onClick={() => setActiveFilter(type as ReaderType)}
+                            onClick={() => setActiveFilter(type)}
                             className="flex items-center gap-1"
                         >
                             <span>{meta.icon}</span>
@@ -200,7 +213,7 @@ export function ShelfPage() {
 
             {/* 书籍列表/网格 */}
             {filteredBooks.length === 0 ? (
-                <div className="text-center py-20 text-muted-foreground bg-gray-50 rounded-xl border border-dashed">
+                <div className="text-center py-20 text-muted-foreground bg-gray-50 dark:bg-muted/30 rounded-xl border border-dashed dark:border-border">
                     <p className="text-5xl mb-4">📚</p>
                     <p className="text-xl font-medium">没有找到相关书籍</p>
                     <p className="mt-2">请检查你的搜索条件或前往配置页检查数据源</p>
@@ -227,8 +240,8 @@ export function ShelfPage() {
                         <div
                             key={book.title}
                             className={cn(
-                                "flex items-center gap-4 p-4 bg-white rounded-lg border hover:shadow-md transition-all cursor-pointer group select-none",
-                                selectedBookIds.has(book.title) && "border-indigo-500 bg-indigo-50/50"
+                                "flex items-center gap-4 p-4 bg-white dark:bg-card rounded-lg border dark:border-border hover:shadow-md transition-all cursor-pointer group select-none",
+                                selectedBookIds.has(book.title) && "border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/30"
                             )}
                             onClick={() => {
                                 if (isSelectionMode) {
@@ -244,28 +257,23 @@ export function ShelfPage() {
                                     "w-5 h-5 rounded border flex items-center justify-center transition-colors flex-shrink-0",
                                     selectedBookIds.has(book.title)
                                         ? "bg-indigo-600 border-indigo-600 text-white"
-                                        : "border-gray-300 bg-white"
+                                        : "border-gray-300 dark:border-gray-600 bg-white dark:bg-muted"
                                 )}>
                                     {selectedBookIds.has(book.title) && <CheckSquare size={14} />}
                                 </div>
                             )}
 
+                            {/* 列表视图复用 BookCover 组件 */}
                             <div className="h-16 w-12 flex-shrink-0">
-                                {/* We reuse BookCover but maybe not Full BookCard for list view to keep it compact */}
-                                <div className="h-full w-full rounded shadow-sm overflow-hidden relative">
-                                    {/* Simple cover placeholder or BookCover component if it supports small size well */}
-                                    <div className="w-full h-full bg-gray-200 flex items-center justify-center text-[8px] text-center p-1 leading-tight text-gray-500">
-                                        {book.title.slice(0, 2)}
-                                    </div>
-                                </div>
+                                <BookCover title={book.title} author={book.author} className="h-full w-full" />
                             </div>
                             <div className="flex-1 min-w-0">
-                                <h3 className="font-medium text-gray-900 truncate group-hover:text-indigo-600 transition-colors">{book.title}</h3>
-                                <p className="text-sm text-gray-500 truncate">{book.author}</p>
+                                <h3 className="font-medium text-foreground truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{book.title}</h3>
+                                <p className="text-sm text-muted-foreground truncate">{book.author}</p>
                             </div>
-                            <div className="flex items-center gap-4 text-sm text-gray-500">
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
                                 <div className="hidden sm:flex items-center gap-1">
-                                    <span className="text-xs bg-gray-100 px-2 py-1 rounded-full">{book.noteCount} 笔记</span>
+                                    <span className="text-xs bg-gray-100 dark:bg-muted px-2 py-1 rounded-full">{book.noteCount} 笔记</span>
                                 </div>
                                 <div className="flex gap-1">
                                     {book.sourceApps.map(app => (

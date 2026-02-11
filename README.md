@@ -1,160 +1,82 @@
 # ReDav
 
-[![Deploy to Cloudflare Pages](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/seeyou2n1ght/ReDav)
+> **Re-read your journey.** Your private Readwise on WebDAV.  
+> 前端直连 WebDAV 的阅读笔记聚合工具，支持 AnxReader、MoonReader 等。
 
-> Re-read your journey. Your private Readwise on WebDAV.
+![ReDav Screenshot](./docs/screenshot.png)
 
-ReDav 是一个纯前端、无状态、可一键部署的轻量级阅读笔记聚合工具。让你的阅读笔记不再沉睡在 WebDAV 网盘中。
+## ✨ 特性
 
-## 特性
+- **🔒 数据完全自主**：无后端存储，配置和数据仅保存在浏览器本地（IndexedDB/LocalStorage）。
+- **☁️ WebDAV 直连**：支持任意标准 WebDAV 服务（坚果云、Nas、Nextcloud 等）。
+- **📚 多源支持**：
+  - **AnxReader** (自动同步 .db 数据库)
+  - **MoonReader (静读天下)** (解析 .an/.mrex 格式)
+- **🎨 现代化体验**：
+  - 响应式设计 (Mobile/Desktop)
+  - **深色模式**完美适配
+  - 极速搜索与筛选
+- **📤 强大的导出**：
+  - 支持 **Markdown**, **Obsidian**, **Notion** 等多种格式
+  - 自定义导出模板（支持变量插值）
+  - 实时预览与一键复制
 
-- **数据自主** - 笔记永远在你自己的 WebDAV 里，ReDav 只是一个"眼镜"
-- **多阅读器支持** - 支持 AnxReader、MoonReader(静读天下) 等主流阅读应用
-- **统一体验** - 将不同格式的笔记统一为标准化阅读卡片
-- **一键部署** - 基于 Cloudflare Pages，零服务器维护成本
-- **隐私优先** - 无账户系统，配置存储在浏览器本地
+## 🚀 快速部署
 
-## 快速开始
+ReDav 是一个纯静态单页应用 (SPA)，配合轻量级代理解决 CORS 问题。
 
-### 环境要求
+### 方式一：Cloudflare Pages (推荐)
 
-- Node.js 18+
-- pnpm (推荐) 或 npm
+本项目已针对 Cloudflare Pages 优化，内置 `/functions` 目录处理 WebDAV 代理。
 
-### 安装依赖
+1. Fork 本仓库
+2. 在 Cloudflare Dashboard 创建 Pages 项目，连接你的 GitHub 仓库
+3. 构建设置：
+   - **Framework preset**: Vite
+   - **Build command**: `npm run build`
+   - **Output directory**: `dist`
+4. 部署完成后即可使用！
+
+### 方式二：Docker 自托管
 
 ```bash
+docker run -d -p 8080:80 ghcr.io/seeyou2n1ght/redav:latest
+```
+*(Docker 镜像构建脚本即将推出)*
+
+### 方式三：本地开发
+
+```bash
+# 安装依赖
 npm install
-```
 
-### 启动开发服务器
-
-```bash
+# 启动开发服务器 (含本地代理)
 npm run dev
+
+# 启动本地后端代理 (Cloudflare Pages 模拟)
+npm run dev:pages
 ```
 
-### 构建生产版本
+## 🛠️ 配置指南
 
-```bash
-npm run build
-```
+首次访问需在【设置】页面配置数据源：
 
-## 开发进度
+1. **WebDAV 地址**: 你的 WebDAV 服务器地址 (如 `https://dav.jianguoyun.com/dav/`)
+2. **账户密码**: 你的 WebDAV 账号和应用密码
+3. **书库路径**: 阅读器数据同步在 WebDAV 上的文件夹路径
+   - AnxReader 默认为 `/AnxReader` (存放 .db 文件)
+   - MoonReader 默认为 `/Books/.MoonReader/Backup` (存放 .an/.mrex 文件)
 
-### ✅ 已完成
+> ⚠️ **注意**：由于浏览器安全限制 (CORS)，直接连接 WebDAV 通常会失败。ReDav 默认使用内置的 `/api/proxy` 转发请求。你也可以在设置中心配置自定义代理服务。
 
-- ✅ **WebDAV Proxy** - Cloudflare Pages Function 实现
-  - 支持 PROPFIND、GET 请求
-  - 完整的 CORS 处理
-  - Basic Authentication 透传
-  
-- ✅ **useWebDav Hook** - 支持 WebDAV 的 ls（列出目录）和 cat（读取文件）操作
-  - 集成 TanStack Query，提供自动缓存和状态管理
-  - 支持通过 Proxy 透传请求，避免 CORS 问题
-  - 完整的 TypeScript 类型定义
-  - 支持二进制文件读取（arraybuffer）
+## 🏗️ 技术栈
 
-- ✅ **AnxReader 适配器** - SQLite 数据库解析
-  - 基于 sql.js 的浏览器端解析
-  - IndexedDB 缓存 + ETag 增量同步
-  - 书籍与笔记聚合
+- **Core**: React 18, TypeScript, Vite
+- **State**: Zustand (Persistence), TanStack Query
+- **UI**: TailwindCSS 4, shadcn/ui, Lucide Icons
+- **Storage**: IndexedDB (Dexie.js) for caching
+- **Parser**: sql.js (SQLite), pako (GZIP)
 
-- ✅ **MoonReader 适配器** - .an 文件解压与 Gap Analysis 解析
-  - pako 多重解压策略（inflateRaw → inflate → ungzip）
-  - Gap Analysis 算法精准提取笔记
-  - 并行下载优化（限流 5 个）
-  - IndexedDB 缓存 + lastModified 增量同步
+## 📄 许可证
 
-### 🚧 进行中
-
-- 🚧 **聚合层开发** - useAllNotes Hook
-- 🚧 **UI 组件开发** - 书架视图、笔记流视图
-
-## 项目结构
-
-```
-redav/
-├── src/                    # 前端源代码
-│   ├── components/        # UI 组件
-│   ├── hooks/             # 自定义 Hooks
-│   ├── adapters/          # 阅读器适配器
-│   ├── utils/             # 工具函数
-│   └── types/             # 类型定义
-├── functions/             # Cloudflare Pages Functions
-│   └── proxy.ts          # WebDAV 代理
-├── public/               # 静态资源
-└── package.json
-```
-
-## 使用 useWebDav Hook
-
-### 基本用法
-
-```typescript
-import { useWebDav } from './hooks/useWebDav'
-import type { AppConfig } from './types'
-
-function MyComponent() {
-  const config: AppConfig = {
-    webdav: {
-      url: 'https://dav.example.com',
-      username: 'user',
-      password: 'pass'
-    },
-    proxy: {
-      url: 'https://proxy.example.com'
-    }
-  }
-
-  // 列出目录内容
-  const { ls } = useWebDav('/Books', config)
-  const { data: items, isLoading, error } = ls()
-
-  // 读取文件内容
-  const { cat } = useWebDav('/Books/note.json', config)
-  const { data: content, isLoading, error } = cat()
-
-  // ...
-}
-```
-
-### 配置说明
-
-在使用 ReDav 前，你需要配置以下信息：
-
-1. **数据源 (Source)** - WebDAV 地址、账号、密码
-2. **连接管道 (Pipeline)** - Proxy URL（可选，默认为官方代理）
-
-配置示例：
-
-```typescript
-const config: AppConfig = {
-  webdav: {
-    url: 'https://dav.example.com',
-    username: 'your-username',
-    password: 'your-password'
-  },
-  proxy: {
-    url: 'https://your-proxy.com'  // 可选，默认为官方代理
-  }
-}
-```
-
-## 技术栈
-
-- **前端**: React 18 + Vite 5 + TypeScript 5
-- **UI**: Tailwind CSS 4 + shadcn/ui
-- **状态**: React Context + TanStack Query 5 + Dexie.js
-- **后端**: Cloudflare Workers
-- **部署**: Cloudflare Pages
-
-## 开发计划与文档
-
-- [产品需求文档 (PRD)](./docs/PRD.md)
-- [技术规格说明书 (SPEC)](./docs/SPEC.md)
-
-参见上述文档了解详细的产品需求、技术架构和开发路线图。
-
-## 许可证
-
-MIT
+MIT License © 2024-Present [ReDav Contributors](https://github.com/seeyou2n1ght/ReDav/graphs/contributors)

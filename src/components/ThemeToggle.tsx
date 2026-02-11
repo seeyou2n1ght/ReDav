@@ -2,10 +2,20 @@ import { Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 
+// 从 localStorage 读取主题偏好
+function getStoredTheme(): "light" | "dark" | "system" {
+    const stored = localStorage.getItem("redav-theme");
+    if (stored === "light" || stored === "dark" || stored === "system") return stored;
+    return "system";
+}
+
 export function ThemeToggle() {
-    const [theme, setTheme] = useState<"light" | "dark" | "system">("system");
+    const [theme, setTheme] = useState<"light" | "dark" | "system">(getStoredTheme);
 
     useEffect(() => {
+        // 持久化到 localStorage
+        localStorage.setItem("redav-theme", theme);
+
         const isDark =
             theme === "dark" ||
             (theme === "system" &&

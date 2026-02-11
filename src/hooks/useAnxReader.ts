@@ -132,7 +132,7 @@ export function useAnxReader() {
                 // 使用缓存
                 const cached = await getCachedData();
                 if (cached) {
-                    console.log('[AnxReader] 使用缓存数据');
+                    // console.debug('[AnxReader] 使用缓存数据');
                     return {
                         books: cached.books,
                         notes: cached.notes,
@@ -142,7 +142,7 @@ export function useAnxReader() {
             }
 
             // 3. 下载并解析数据库
-            console.log('[AnxReader] 下载新数据...');
+            // console.debug('[AnxReader] 下载新数据...');
             const { buffer, etag } = await fetchDatabase(
                 anxConfig.webdav.url,
                 anxConfig.syncPath,
@@ -155,7 +155,7 @@ export function useAnxReader() {
 
             // 4. 保存到缓存
             await saveToCache(etag, result.books, result.notes);
-            console.log('[AnxReader] 数据已缓存');
+            // console.debug('[AnxReader] 数据已缓存');
 
             return {
                 ...result,

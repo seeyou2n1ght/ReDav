@@ -13,6 +13,7 @@ import {
     CheckSquare
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 interface NoteCardProps {
     note: UnifiedNote;
@@ -37,19 +38,26 @@ export function NoteCard({ note, showBookTitle, selectionMode, isSelected, onTog
         e.stopPropagation();
         try {
             await navigator.clipboard.writeText(`${note.highlight}\n\n— ${note.bookTitle}`);
-            // TODO: Show toast
+            toast.success('已复制到剪贴板');
         } catch (err) {
             console.error('Failed to copy:', err);
+            toast.error('复制失败');
         }
+    };
+
+    // 分享卡片占位
+    const handleShare = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        toast.info('分享卡片功能即将推出 ✨');
     };
 
     return (
         <Card
             className={cn(
-                "group relative overflow-visible transition-all duration-300 border-transparent bg-white",
-                selectionMode ? "cursor-pointer hover:bg-gray-50 border-l-4" : "hover:shadow-md border-l-0 hover:border-gray-200",
-                isSelected ? "border-l-indigo-500 ring-2 ring-indigo-500/20 bg-indigo-50/10" : "border-l-transparent",
-                !selectionMode && "hover:border-l-0" // Reset if needed, but logic above handles it
+                "group relative overflow-visible transition-all duration-300 border-transparent bg-white dark:bg-card",
+                selectionMode ? "cursor-pointer hover:bg-gray-50 dark:hover:bg-muted border-l-4" : "hover:shadow-md border-l-0 hover:border-gray-200 dark:hover:border-border",
+                isSelected ? "border-l-indigo-500 ring-2 ring-indigo-500/20 bg-indigo-50/10 dark:bg-indigo-950/20" : "border-l-transparent",
+                !selectionMode && "hover:border-l-0"
             )}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
@@ -62,7 +70,7 @@ export function NoteCard({ note, showBookTitle, selectionMode, isSelected, onTog
                         "w-5 h-5 rounded border flex items-center justify-center transition-colors shadow-sm",
                         isSelected
                             ? "bg-indigo-600 border-indigo-600 text-white"
-                            : "border-gray-300 bg-white"
+                            : "border-gray-300 dark:border-gray-600 bg-white dark:bg-muted"
                     )}>
                         {isSelected && <CheckSquare size={14} />}
                     </div>
@@ -77,10 +85,9 @@ export function NoteCard({ note, showBookTitle, selectionMode, isSelected, onTog
             <div className="p-6 relative z-10 space-y-4">
                 {/* 主要高亮内容 */}
                 <div className="relative">
-                    <blockquote className="text-lg leading-relaxed text-gray-800 font-serif border-l-4 border-indigo-500/30 pl-4 py-1 my-2">
-
-                        {/* 模拟荧光笔效果 */}
-                        <span className="bg-gradient-to-r from-yellow-50 to-orange-50 decoration-clone px-1 rounded-sm">
+                    <blockquote className="text-lg leading-relaxed text-foreground font-serif border-l-4 border-indigo-500/30 pl-4 py-1 my-2">
+                        {/* 荧光笔效果 - 增强可见度 */}
+                        <span className="bg-yellow-100/70 dark:bg-yellow-900/30 decoration-clone px-1 rounded-sm">
                             {note.highlight}
                         </span>
                     </blockquote>
@@ -88,8 +95,8 @@ export function NoteCard({ note, showBookTitle, selectionMode, isSelected, onTog
 
                 {/* 用户想法 (如果有) */}
                 {note.note && (
-                    <div className="mt-4 pt-4 border-t border-dashed border-gray-100">
-                        <div className="flex gap-2 items-start text-sm text-gray-600">
+                    <div className="mt-4 pt-4 border-t border-dashed border-gray-100 dark:border-border">
+                        <div className="flex gap-2 items-start text-sm text-muted-foreground">
                             <span className="text-indigo-500 mt-1">💭</span>
                             <p className="italic">{note.note}</p>
                         </div>
@@ -109,7 +116,7 @@ export function NoteCard({ note, showBookTitle, selectionMode, isSelected, onTog
 
                         {/* 页码/进度 */}
                         {note.page !== undefined && (
-                            <span className="flex items-center gap-1 bg-gray-50 px-1.5 py-0.5 rounded text-[10px]">
+                            <span className="flex items-center gap-1 bg-gray-50 dark:bg-muted px-1.5 py-0.5 rounded text-[10px]">
                                 {note.page}%
                             </span>
                         )}
@@ -122,13 +129,13 @@ export function NoteCard({ note, showBookTitle, selectionMode, isSelected, onTog
                     </div>
 
                     {/* 来源应用图标 */}
-                    <Badge variant="outline" className="text-[10px] h-5 border-gray-100 text-gray-400 font-normal">
+                    <Badge variant="outline" className="text-[10px] h-5 border-gray-100 dark:border-border text-muted-foreground font-normal">
                         {note.sourceApp}
                     </Badge>
                 </div>
             </div>
 
-            {/* 悬浮操作栏 - ONLY SHOW WHEN NOT IN SELECTION MODE */}
+            {/* 悬浮操作栏 */}
             {!selectionMode && (
                 <div
                     className={cn(
@@ -136,10 +143,10 @@ export function NoteCard({ note, showBookTitle, selectionMode, isSelected, onTog
                         isHovered ? "opacity-100" : "opacity-0"
                     )}
                 >
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-indigo-600" onClick={handleCopy} title="复制文本">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-indigo-600 dark:hover:text-indigo-400" onClick={handleCopy} title="复制文本">
                         <Copy size={14} />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-indigo-600" title="生成分享卡片">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-indigo-600 dark:hover:text-indigo-400" onClick={handleShare} title="生成分享卡片">
                         <Share2 size={14} />
                     </Button>
                 </div>
@@ -148,7 +155,7 @@ export function NoteCard({ note, showBookTitle, selectionMode, isSelected, onTog
             {/* 关联书名 (可选显示) */}
             {showBookTitle && (
                 <div className="absolute -top-3 left-4">
-                    <Badge variant="secondary" className="bg-white shadow-sm border text-[10px] hover:bg-white cursor-pointer group-hover:border-indigo-100 transition-colors">
+                    <Badge variant="secondary" className="bg-white dark:bg-card shadow-sm border dark:border-border text-[10px] hover:bg-white dark:hover:bg-card cursor-pointer group-hover:border-indigo-100 dark:group-hover:border-indigo-800 transition-colors">
                         <BookOpen size={10} className="mr-1" />
                         {note.bookTitle}
                     </Badge>

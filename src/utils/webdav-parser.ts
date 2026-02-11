@@ -24,15 +24,16 @@ export function parseWebDAVXml(xml: string): WebDAVItem[] {
 
     if (responses.length === 0) {
       // 尝试不带命名空间的查询（兼容某些服务器）
-      responses = doc.getElementsByTagName('response') as any; // 修正类型兼容性
+      // 使用 unknown 转换来避免 list 类型不匹配问题，然后断言为 HTMLCollectionOf<Element> 或类似
+      responses = doc.getElementsByTagName('response') as unknown as HTMLCollectionOf<Element>;
 
       // 同时也尝试带前缀的 TagName，如果 DOMParser 没有正确处理 NS
       if (responses.length === 0) {
-        responses = doc.getElementsByTagName('d:response') as any;
+        responses = doc.getElementsByTagName('d:response') as unknown as HTMLCollectionOf<Element>;
       }
     }
 
-    console.log(`[WebDAV Parser] Found ${responses.length} response nodes`);
+    // console.log(`[WebDAV Parser] Found ${responses.length} response nodes`);
 
     for (let i = 0; i < responses.length; i++) {
       const response = responses[i];
@@ -75,7 +76,6 @@ export function parseWebDAVXml(xml: string): WebDAVItem[] {
       const basename = getText(DAV_NS, 'displayname');
 
       // 如果没有 displayname，从 href 中提取文件名
-      const filename = href;
       // 移除末尾的 /
       const cleanHref = href.replace(/\/$/, '');
       // 解码 URL 编码的文件名
@@ -111,7 +111,7 @@ export function parseWebDAVXml(xml: string): WebDAVItem[] {
       const etag = getText(DAV_NS, 'getetag') || undefined;
 
       items.push({
-        filename,
+        filename: href, // href 作为 filename
         basename: finalBasename,
         lastmod,
         size,
