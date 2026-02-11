@@ -69,8 +69,8 @@ export function NoteCard({ note, showBookTitle }: NoteCardProps) {
                     <div className="flex items-center gap-3">
                         {/* 章节信息 */}
                         {note.chapter && (
-                            <span className="flex items-center gap-1 max-w-[150px] truncate" title={note.chapter}>
-                                <MapPin size={12} />
+                            <span className="flex items-center gap-1 max-w-[200px] sm:max-w-[300px] truncate" title={note.chapter}>
+                                <MapPin size={12} className="flex-shrink-0" />
                                 {note.chapter}
                             </span>
                         )}

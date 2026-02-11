@@ -1,61 +1,44 @@
-/**
- * 主布局组件
- * 左侧导航 + 右侧工作区
- * 移动端采用抽屉模式
- */
-
-import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { ThemeToggle } from './ThemeToggle';
+import { useSidebar } from '../hooks/useSidebar';
+import { cn } from '@/lib/utils';
 
 export function Layout() {
-    const [sidebarOpen, setSidebarOpen] = useState(false);
+    const { isPinned, setHovered, isHovered } = useSidebar();
+    const isExpanded = isPinned || isHovered;
 
     return (
-        <div className="flex h-screen bg-gray-50">
-            {/* 移动端遮罩 */}
-            {sidebarOpen && (
-                <div
-                    className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-                    onClick={() => setSidebarOpen(false)}
-                />
-            )}
+        <div className="flex h-screen bg-gray-50 dark:bg-background text-foreground transition-colors duration-300 overflow-hidden">
 
-            {/* 侧边栏 - 移动端抽屉 */}
+            {/* Desktop Sidebar (Hidden on Mobile) */}
             <aside
-                className={`
-          fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out
-          lg:relative lg:translate-x-0 lg:shadow-none lg:border-r
-          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-        `}
+                className={cn(
+                    "hidden lg:flex flex-col border-r bg-card z-20 shadow-sm relative transition-all duration-300 ease-in-out",
+                    isExpanded ? "w-56" : "w-[68px]"
+                )}
+                onMouseEnter={() => !isPinned && setHovered(true)}
+                onMouseLeave={() => setHovered(false)}
             >
-                <Sidebar onClose={() => setSidebarOpen(false)} />
-            </aside>
 
-            {/* 主内容区 */}
-            <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative bg-background">
-                <div className="absolute top-4 right-4 z-50">
-                    <ThemeToggle />
-                </div>
-                {/* 移动端顶部栏 */}
-                <header className="lg:hidden flex items-center gap-4 px-4 py-3 bg-white border-b">
-                    <button
-                        onClick={() => setSidebarOpen(true)}
-                        className="p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-lg"
-                    >
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                        </svg>
-                    </button>
-                    <h1 className="text-lg font-semibold text-gray-800">ReDav</h1>
-                </header>
+                {/* Main Content Area */}
+                <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative bg-gray-50/50 dark:bg-background/50">
+                    {/* Mobile Header */}
+                    <header className="lg:hidden flex items-center justify-between px-6 py-4 bg-white/80 dark:bg-card/80 backdrop-blur-md border-b sticky top-0 z-10">
+                        <h1 className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">ReDav</h1>
+                        <ThemeToggle />
+                    </header>
 
-                {/* 页面内容 */}
-                <div className="flex-1 overflow-auto">
-                    <Outlet />
-                </div>
-            </main>
+                    {/* Scrollable Page Content */}
+                    <div className="flex-1 overflow-auto pb-20 lg:pb-0 scroll-smooth">
+                        <Outlet />
+                    </div>
+                </main>
+
+                {/* Mobile Bottom Navigation (Hidden on Desktop) */}
+                <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-card border-t z-50 pb-safe">
+                    <Sidebar className="flex-row h-16 border-r-0 justify-around items-center" />
+                </nav>
         </div>
     );
 }

@@ -59,31 +59,33 @@ export function NotesPage() {
             </div>
 
             {/* 右侧：笔记流 */}
-            <div className="flex-1 flex flex-col h-full overflow-hidden">
-                {/* 顶部 Header */}
-                <header className="bg-white border-b px-6 py-4 flex justify-between items-center shadow-sm z-10">
-                    <div>
+            <div className="flex-1 flex flex-col h-full overflow-hidden relative">
+                {/* 顶部 Header - 移除了 sticky，改为 flex 布局的一部分 */}
+                <header className="bg-white border-b px-6 py-4 flex justify-between items-center shadow-sm z-10 flex-shrink-0">
+                    <div className="flex-1 min-w-0 mr-4">
                         <h1 className="text-xl font-bold text-gray-900 line-clamp-1" title={currentBook?.title}>
                             {currentBook?.title || selectedBookTitle}
                         </h1>
                         <div className="flex items-center gap-2 mt-1">
-                            <span className="text-xs text-gray-500">
+                            <span className="text-xs text-gray-500 whitespace-nowrap">
                                 {currentBook?.author ? `${currentBook.author} · ` : ''}
                                 {filteredNotes.length} 条笔记
                             </span>
-                            {currentBook?.sourceApps.map(app => (
-                                <Badge key={app} variant="secondary" className="text-[10px] px-1 h-4">
-                                    {app}
-                                </Badge>
-                            ))}
+                            <div className="flex gap-1 overflow-hidden">
+                                {currentBook?.sourceApps.map(app => (
+                                    <Badge key={app} variant="secondary" className="text-[10px] px-1 h-4 whitespace-nowrap">
+                                        {app}
+                                    </Badge>
+                                ))}
+                            </div>
                         </div>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-shrink-0">
                         <Input
                             placeholder="搜索笔记..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-48 h-8 text-sm"
+                            className="w-32 md:w-48 h-8 text-sm transition-all focus:w-64"
                         />
                         <Button variant="ghost" size="sm" onClick={() => refresh()}>
                             ↻
@@ -91,28 +93,30 @@ export function NotesPage() {
                     </div>
                 </header>
 
-                {/* 笔记列表 ScrollArea */}
-                <ScrollArea className="flex-1 p-6">
-                    <div className="max-w-3xl mx-auto space-y-6 pb-20">
-                        {isLoading && filteredNotes.length === 0 ? (
-                            <div className="space-y-4">
-                                <Skeleton className="h-32 w-full" />
-                                <Skeleton className="h-24 w-full" />
-                                <Skeleton className="h-40 w-full" />
-                            </div>
-                        ) : filteredNotes.length === 0 ? (
-                            <div className="text-center py-20 text-gray-400">
-                                <p>暂无笔记</p>
-                            </div>
-                        ) : (
-                            filteredNotes
-                                .filter(note => !searchQuery || note.highlight?.includes(searchQuery) || note.note?.includes(searchQuery))
-                                .map((note) => (
-                                    <NoteCard key={note.id} note={note} showBookTitle={!selectedBookTitle} />
-                                ))
-                        )}
-                    </div>
-                </ScrollArea>
+                {/* 笔记列表 ScrollArea - 占据剩余空间 */}
+                <div className="flex-1 min-h-0">
+                    <ScrollArea className="h-full">
+                        <div className="p-6 max-w-3xl mx-auto space-y-6 pb-20">
+                            {isLoading && filteredNotes.length === 0 ? (
+                                <div className="space-y-4">
+                                    <Skeleton className="h-32 w-full" />
+                                    <Skeleton className="h-24 w-full" />
+                                    <Skeleton className="h-40 w-full" />
+                                </div>
+                            ) : filteredNotes.length === 0 ? (
+                                <div className="text-center py-20 text-gray-400">
+                                    <p>暂无笔记</p>
+                                </div>
+                            ) : (
+                                filteredNotes
+                                    .filter(note => !searchQuery || note.highlight?.includes(searchQuery) || note.note?.includes(searchQuery))
+                                    .map((note) => (
+                                        <NoteCard key={note.id} note={note} showBookTitle={!selectedBookTitle} />
+                                    ))
+                            )}
+                        </div>
+                    </ScrollArea>
+                </div>
             </div>
         </div>
     );

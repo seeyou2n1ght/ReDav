@@ -5,6 +5,7 @@
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { cn } from '@/lib/utils';
 import { useLibrary } from '../hooks/useLibrary';
 import { READER_DEFAULTS, type ReaderType, type UnifiedBook } from '../types';
 import { Card, CardFooter } from '@/components/ui/card';
@@ -13,12 +14,14 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BookCover } from '@/components/ui/cover-generator';
+import { LayoutGrid, List } from 'lucide-react';
 
 export function ShelfPage() {
     const navigate = useNavigate();
     const { books, isLoading, errors, refresh } = useLibrary();
     const [searchQuery, setSearchQuery] = useState('');
     const [activeFilter, setActiveFilter] = useState<'all' | ReaderType>('all');
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
     // 过滤书籍
     const filteredBooks = books.filter(book => {
@@ -65,6 +68,26 @@ export function ShelfPage() {
                 </div>
 
                 <div className="flex items-center gap-2">
+                    <div className="bg-gray-100 p-1 rounded-lg flex items-center gap-1">
+                        <Button
+                            variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                            size="icon"
+                            className={cn("h-7 w-7", viewMode === 'grid' && "bg-white text-black shadow-sm hover:bg-white/90")}
+                            onClick={() => setViewMode('grid')}
+                            title="网格视图"
+                        >
+                            <LayoutGrid size={14} />
+                        </Button>
+                        <Button
+                            variant={viewMode === 'list' ? 'default' : 'ghost'}
+                            size="icon"
+                            className={cn("h-7 w-7", viewMode === 'list' && "bg-white text-black shadow-sm hover:bg-white/90")}
+                            onClick={() => setViewMode('list')}
+                            title="列表视图"
+                        >
+                            <List size={14} />
+                        </Button>
+                    </div>
                     <Button variant="outline" size="sm" onClick={() => refresh()}>
                         ↻ 刷新
                     </Button>
@@ -110,7 +133,7 @@ export function ShelfPage() {
                 </div>
             </div>
 
-            {/* 书籍网格 */}
+            {/* 书籍列表/网格 */}
             {filteredBooks.length === 0 ? (
                 <div className="text-center py-20 text-muted-foreground bg-gray-50 rounded-xl border border-dashed">
                     <p className="text-5xl mb-4">📚</p>
@@ -120,10 +143,43 @@ export function ShelfPage() {
                         前往配置
                     </Button>
                 </div>
-            ) : (
+            ) : viewMode === 'grid' ? (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
                     {filteredBooks.map((book) => (
                         <BookCard key={book.title} book={book} onClick={() => navigate(`/notes?book=${encodeURIComponent(book.title)}`)} />
+                    ))}
+                </div>
+            ) : (
+                <div className="space-y-2">
+                    {filteredBooks.map((book) => (
+                        <div
+                            key={book.title}
+                            className="flex items-center gap-4 p-4 bg-white rounded-lg border hover:shadow-md transition-all cursor-pointer group"
+                            onClick={() => navigate(`/notes?book=${encodeURIComponent(book.title)}`)}
+                        >
+                            <div className="h-16 w-12 flex-shrink-0">
+                                <BookCover title={book.title} author={book.author} className="h-full w-full rounded shadow-sm" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <h3 className="font-medium text-gray-900 truncate group-hover:text-indigo-600 transition-colors">{book.title}</h3>
+                                <p className="text-sm text-gray-500 truncate">{book.author}</p>
+                            </div>
+                            <div className="flex items-center gap-4 text-sm text-gray-500">
+                                <div className="hidden sm:flex items-center gap-1">
+                                    <span className="text-xs bg-gray-100 px-2 py-1 rounded-full">{book.noteCount} 笔记</span>
+                                </div>
+                                <div className="flex gap-1">
+                                    {book.sourceApps.map(app => (
+                                        <Badge key={app} variant="secondary" className="text-[10px] h-5 font-normal">
+                                            {app}
+                                        </Badge>
+                                    ))}
+                                </div>
+                                <div className="hidden md:block w-24 text-right text-xs">
+                                    {book.lastReading ? new Date(book.lastReading).toLocaleDateString() : '-'}
+                                </div>
+                            </div>
+                        </div>
                     ))}
                 </div>
             )}
