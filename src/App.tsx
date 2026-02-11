@@ -10,6 +10,23 @@ import { WelcomePage } from './pages/WelcomePage';
 import { ShelfPage } from './pages/ShelfPage';
 import { NotesPage } from './pages/NotesPage';
 import { ConfigPage } from './pages/ConfigPage';
+import { ExportConfigModal } from './components/Export/ExportConfigModal';
+import { ExportConfigModal } from './components/Export/ExportConfigModal';
+
+function AppRoutes() {
+  const { config, isLoading } = useConfig();
+  // ... (maintain existing logic)
+  // But wait, replace_file_content replaces the BLOCK. I need to be careful not to delete AppRoutes body if I select a huge block.
+  // I will just modify the imports and the App component.
+  // Actually, I can use multi_replace or just target the specific areas.
+  // Let's target the App component and imports.
+  // Imports are at top. App is at bottom.
+  // Let's do imports first, then App.
+  // Actually, I'll validly use replace_file_content for the whole file if it's small enough (68 lines), or just use 2 chunks with multi_replace.
+  // Multi_replace is better.
+}
+// Wait, I can't put logic in "ReplacementContent" like that.
+// I will use multi_replace_file_content.
 
 function AppRoutes() {
   const { config, isLoading } = useConfig();
@@ -60,6 +77,7 @@ function App() {
   return (
     <BrowserRouter>
       <AppRoutes />
+      <ExportConfigModal />
     </BrowserRouter>
   );
 }
