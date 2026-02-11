@@ -10,6 +10,7 @@ import { createWebDAVClient, listDirectory, readFile } from '../utils/webdav-cli
 import { parseWebDAVXml } from '../utils/webdav-parser';
 import { parseFile, type ParseContext, type ParseResult } from '../adapters';
 import { findMoonReaderFiles, type MoonReaderAdapterConfig } from '../adapters/moon-reader-adapter';
+import { findAnxReaderFiles, type AnxReaderAdapterConfig } from '../adapters/anx-reader-adapter';
 import type { UnifiedNote, ReaderType, ReaderConfig, UnifiedBook, WebDAVItem } from '../types';
 import type { AxiosInstance } from 'axios';
 
@@ -26,7 +27,7 @@ interface DownloadTask {
   proxyUrl: string;
   webdavUrl: string;
   readerType: ReaderType;
-  adapterConfig?: MoonReaderAdapterConfig;
+  adapterConfig?: MoonReaderAdapterConfig | AnxReaderAdapterConfig;
 }
 
 export interface LibraryData {
@@ -59,7 +60,6 @@ export function useLibrary(): LibraryData {
     queries: enabledReaders.map(({ type, readerConfig, client }) => ({
       queryKey: ['library', 'ls', type, readerConfig.webdav.url, readerConfig.syncPath],
       queryFn: async (): Promise<ListQueryResult> => {
-        let xml: string;
         let items: WebDAVItem[];
 
         if (type === 'moonReader') {
@@ -77,31 +77,30 @@ export function useLibrary(): LibraryData {
             size: 0,
             type: 'file' as const,
           }));
+        } else if (type === 'anxReader') {
+          const anxConfig: AnxReaderAdapterConfig = {
+            syncPath: readerConfig.syncPath,
+            webdavUrl: readerConfig.webdav.url,
+            proxyUrl: appConfig?.proxy.url || '',
+            username: readerConfig.webdav.username,
+            password: readerConfig.webdav.password,
+          };
+          const files = await findAnxReaderFiles(anxConfig);
+          items = files.map(f => ({
+            filename: f.filename,
+            basename: 'database7.db',
+            lastmod: f.lastmod,
+            size: 0,
+            type: 'file' as const,
+          }));
         } else {
-          xml = await listDirectory(
+          const xml = await listDirectory(
             client,
             readerConfig.webdav.url,
             readerConfig.syncPath,
             appConfig?.proxy.url || ''
           );
           items = parseWebDAVXml(xml);
-
-          if (type === 'anxReader' && !items.some(i => i.basename === 'database7.db')) {
-            const anxDir = items.find(i => i.basename === 'anx' && i.type === 'directory');
-            if (anxDir) {
-              const subPath = readerConfig.syncPath.endsWith('/')
-                ? `${readerConfig.syncPath}anx`
-                : `${readerConfig.syncPath}/anx`;
-
-              xml = await listDirectory(
-                client,
-                readerConfig.webdav.url,
-                subPath,
-                appConfig?.proxy.url || ''
-              );
-              items = parseWebDAVXml(xml);
-            }
-          }
         }
 
         return { type, readerConfig, items };
@@ -130,13 +129,21 @@ export function useLibrary(): LibraryData {
           relativePath = relativePath.substring(basePathname.length);
         }
 
-        let adapterConfig: MoonReaderAdapterConfig | undefined;
+        let adapterConfig: MoonReaderAdapterConfig | AnxReaderAdapterConfig | undefined;
         if (type === 'moonReader') {
           adapterConfig = {
             syncPath: readerConfig.syncPath,
             webdavUrl: readerConfig.webdav.url,
             proxyUrl: appConfig.proxy.url,
             client,
+          };
+        } else if (type === 'anxReader') {
+          adapterConfig = {
+            syncPath: readerConfig.syncPath,
+            webdavUrl: readerConfig.webdav.url,
+            proxyUrl: appConfig.proxy.url,
+            username: readerConfig.webdav.username,
+            password: readerConfig.webdav.password,
           };
         }
 
@@ -178,6 +185,9 @@ export function useLibrary(): LibraryData {
         if (task.readerType === 'moonReader' && task.adapterConfig) {
           const { moonReaderAdapter } = await import('../adapters/moon-reader-adapter');
           result = await moonReaderAdapter.parse(context);
+        } else if (task.readerType === 'anxReader' && task.adapterConfig) {
+          const { anxReaderAdapter } = await import('../adapters/anx-reader-adapter');
+          result = await anxReaderAdapter.parse(context);
         } else {
           result = await parseFile(context);
         }

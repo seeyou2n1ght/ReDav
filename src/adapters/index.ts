@@ -3,7 +3,7 @@
  */
 
 import type { ReaderAdapter, ParseContext, ParseResult } from './types';
-import { anxReaderAdapter } from './anx-reader-adapter';
+import { anxReaderAdapter, type AnxReaderAdapterConfig } from './anx-reader-adapter';
 import { moonReaderAdapter, type MoonReaderAdapterConfig } from './moon-reader-adapter';
 
 export const adapters: ReaderAdapter[] = [
@@ -23,4 +23,4 @@ export async function parseFile(context: ParseContext): Promise<ParseResult> {
   return adapter.parse(context);
 }
 
-export type { ReaderAdapter, ParseContext, ParseResult, MoonReaderAdapterConfig };
+export type { ReaderAdapter, ParseContext, ParseResult, MoonReaderAdapterConfig, AnxReaderAdapterConfig };
